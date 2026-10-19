@@ -1,5 +1,15 @@
 {
   "$schema": "https://turbo.build/caching/types/definitions/JSON_Schema.json",
+  "globalEnv": [
+    "DATABASE_URL",
+    "DATABASE_URL_POOLED",
+    "JWT_ACCESS_SECRET",
+    "JWT_REFRESH_SECRET",
+    "JWT_ACCESS_TTL",
+    "JWT_REFRESH_TTL",
+    "CORS_ORIGIN",
+    "NODE_ENV"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
