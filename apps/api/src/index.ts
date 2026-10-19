@@ -1,7 +1,7 @@
 import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import express, { type Express } from "express";
+import express, { request, type Express } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { authRoutes } from "./modules/auth/auth.routes";
@@ -29,13 +29,8 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // Rotas de status e health check
-app.get("/", (_req, res) => {
-  res.status(200).json({
-    status: "ok",
-    message: "DevNote API — online",
-    version: "0.1.0",
-    timestamp: new Date().toISOString(),
-  });
+app.get("/", (request, response) => {
+  response.status(200).send("Rodando");
 });
 
 app.get("/health", (_req, res) => {
