@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import jwt from "jsonwebtoken";
-import { LoginBodySchema, RegisterBodySchema } from "./auth.schema";
+import { LoginBodySchema, RegisterBodySchema } from "./auth.schema.js";
 import {
   autenticarUsuario,
   gerarRefreshToken,
@@ -9,7 +9,7 @@ import {
   revogarSessao,
   salvarSessao,
   validarSessao,
-} from "./auth.service";
+} from "./auth.service.js";
 
 /**
  * Rotas de autenticação (Express Router):

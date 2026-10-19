@@ -4,7 +4,7 @@ import cors from "cors";
 import express, { type Express } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-import { authRoutes } from "./modules/auth/auth.routes";
+import { authRoutes } from "./modules/auth/auth.routes.js";
 
 export const app: Express = express();
 

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcrypt";
-import prisma from "../../prisma/client";
+import prisma from "../../prisma/client.js";
 
 const BCRYPT_COST = 12;
 
