@@ -5,10 +5,10 @@ import helmet from "@fastify/helmet";
 /**
  * Entry point Vercel Serverless — autossuficiente.
  *
- * O Fastify é configurado aqui dentro para evitar imports relativos
- * (../src/app) que quebram no ESM do runtime da Vercel.
- * Quando o projeto crescer e tiver rotas reais, migramos para
- * um bundler (esbuild/tsup) que gera um único arquivo.
+ * - Sem imports de ../src/ (evita erro de resolução ESM no runtime)
+ * - Usa app.server.emit("request") em vez de app.inject()
+ *   (evita conflito ESM/CJS do light-my-request com cookie@2)
+ * - Framework Preset DEVE ser "Other" no dashboard da Vercel
  */
 
 const app = Fastify({ logger: false });
@@ -43,32 +43,5 @@ const readyPromise = app.ready();
 // Handler serverless — Vercel invoca esta função para cada request
 export default async function handler(req: any, res: any) {
   await readyPromise;
-
-  // Coleta body para POST/PUT/PATCH
-  let body: string | undefined;
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    const chunks: Buffer[] = [];
-    for await (const chunk of req) {
-      chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-    }
-    const raw = Buffer.concat(chunks).toString();
-    if (raw.length > 0) body = raw;
-  }
-
-  // Injeta requisição no Fastify sem servidor HTTP real
-  const response = await app.inject({
-    method: req.method,
-    url: req.url || "/",
-    headers: req.headers,
-    payload: body,
-  });
-
-  // Copia resposta do Fastify para a resposta da Vercel
-  res.statusCode = response.statusCode;
-  for (const [key, value] of Object.entries(response.headers)) {
-    if (value !== undefined) {
-      res.setHeader(key, value as string);
-    }
-  }
-  res.end(response.body);
+  app.server.emit("request", req, res);
 }
