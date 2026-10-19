@@ -20,6 +20,14 @@ export function buildApp() {
   });
   void app.register(helmet);
 
+  // Rota raiz
+  app.get("/", () => ({
+    status: "ok",
+    message: "DevNote API — online",
+    version: "0.0.0",
+    timestamp: new Date().toISOString(),
+  }));
+
   // Health check
   app.get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }));
 

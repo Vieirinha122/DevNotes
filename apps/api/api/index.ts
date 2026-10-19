@@ -1,17 +1,22 @@
-/**
- * Entry point para Vercel Serverless Functions.
- * Exporta o handler do Fastify via @fastify/aws-lambda (compatível com AWS Lambda/Vercel).
- *
- * O index.ts (dev) faz app.listen(); este aqui exporta app pronta pra serverless.
- */
-
-import { awsLambdaFastify } from "@fastify/aws-lambda";
+import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/app";
 
-const app = buildApp();
+/**
+ * Entry point para Vercel Serverless Functions.
+ * Usa o handler nativo HTTP do Node (app.server.emit) em vez de adaptadores AWS Lambda,
+ * garantindo compatibilidade total com o runtime da Vercel (IncomingMessage e ServerResponse).
+ */
+let appInstance: FastifyInstance | null = null;
 
-// Pre-warming: garante que plugins e rotas estão prontos antes do primeiro request
-void app.ready();
+async function getApp(): Promise<FastifyInstance> {
+  if (!appInstance) {
+    appInstance = buildApp();
+    await appInstance.ready();
+  }
+  return appInstance;
+}
 
-// Handler serverless — Vercel invoca isso pra cada request
-export default awsLambdaFastify(app);
+export default async function handler(req: any, res: any) {
+  const app = await getApp();
+  app.server.emit("request", req, res);
+}
