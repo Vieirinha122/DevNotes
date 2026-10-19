@@ -9,7 +9,7 @@
       }
     },
     {
-      "src": "apps/api/api/index.ts",
+      "src": "apps/api/src/index.ts",
       "use": "@vercel/node",
       "config": {
         "includeFiles": ["node_modules/**", "prisma/**"]
@@ -17,7 +17,7 @@
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/apps/api/api/index.ts" },
+    { "src": "/api/(.*)", "dest": "/apps/api/src/index.ts" },
     { "src": "/(.*)", "dest": "/apps/web/$1" }
   ]
 }

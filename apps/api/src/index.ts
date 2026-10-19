@@ -1,7 +1,7 @@
 import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import express, { request, type Express } from "express";
+import express, { type Express } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { authRoutes } from "./modules/auth/auth.routes";

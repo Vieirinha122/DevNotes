@@ -5,6 +5,6 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["src/**/*", "api/**/*"],
+  "include": ["src/**/*"],
   "references": [{ "path": "../../packages/contracts" }, { "path": "../../packages/domain" }]
 }
