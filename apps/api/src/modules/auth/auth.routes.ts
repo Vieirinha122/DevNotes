@@ -1,4 +1,6 @@
-import type { FastifyInstance } from "fastify";
+import { Router } from "express";
+import rateLimit from "express-rate-limit";
+import jwt from "jsonwebtoken";
 import { LoginBodySchema, RegisterBodySchema } from "./auth.schema";
 import {
   autenticarUsuario,
@@ -10,97 +12,113 @@ import {
 } from "./auth.service";
 
 /**
- * Rotas de autenticação: POST /register, /login, /refresh, /logout.
- * Registradas com prefix /api/v1/auth pelo app.ts.
- *
- * Segurança aplicada:
- * - Zod valida toda entrada (body)
- * - Rate-limit mais restritivo (5/min) nessas rotas sensíveis
- * - Refresh token em cookie HttpOnly + Secure + SameSite
- * - Access token exposto no body (curto: 15min)
+ * Rotas de autenticação (Express Router):
+ * - POST /register
+ * - POST /login
+ * - POST /refresh
+ * - POST /logout
  */
-export async function authRoutes(app: FastifyInstance) {
-  // Register — rate-limit restritivo (brute-force/abuse de sign-up)
-  app.post(
-    "/register",
-    { config: { rateLimit: { max: 5, timeWindow: "1 minute", ban: 300000 } } },
-    async (req, res) => {
-      const parsed = RegisterBodySchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).send({ error: "Dados inválidos", details: parsed.error.errors });
-      }
-      try {
-        const user = await registrarUsuario(parsed.data.email, parsed.data.password);
-        return res.status(201).send(user);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Erro interno";
-        return res.status(409).send({ error: message });
-      }
-    },
-  );
+export const authRoutes: Router = Router();
 
-  // Login — rate-limit restritivo (brute-force protection: 5/min, ban 5min)
-  app.post(
-    "/login",
-    { config: { rateLimit: { max: 5, timeWindow: "1 minute", ban: 300000 } } },
-    async (req, res) => {
-      const parsed = LoginBodySchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).send({ error: "Dados inválidos" });
-      }
-      try {
-        const user = await autenticarUsuario(parsed.data.email, parsed.data.password);
+// Configurações do token JWT
+const JWT_SECRET = process.env.JWT_ACCESS_SECRET || "dev-access-secret-change-me";
+const JWT_EXPIRES_IN = Number(process.env.JWT_ACCESS_TTL) || 900;
 
-        // Access token (JWT, 15min) — retornado no body, usado em memória pelo front
-        const accessToken = app.jwt.sign({ userId: user.id, email: user.email });
-        // Refresh token (aleatório, hash no banco) — cookie HttpOnly
-        const refreshToken = gerarRefreshToken();
+// Rate limit mais restritivo para proteção contra brute force (5 req/min)
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas tentativas. Tente novamente em 1 minuto." },
+});
 
-        const deviceId = (req.headers["x-device-id"] as string) || "unknown";
-        await salvarSessao(user.id, refreshToken, deviceId);
+// Cadastro de usuário
+authRoutes.post("/register", authLimiter, async (req, res) => {
+  const parsed = RegisterBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Dados inválidos", details: parsed.error.errors });
+  }
 
-        res.setCookie("refreshToken", refreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias em ms
-          path: "/api/v1/auth/refresh",
-        });
+  try {
+    const user = await registrarUsuario(parsed.data.email, parsed.data.password);
+    return res.status(201).json(user);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erro interno";
+    return res.status(409).json({ error: message });
+  }
+});
 
-        return { accessToken, user: { id: user.id, email: user.email } };
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Erro interno";
-        return res.status(401).send({ error: message });
-      }
-    },
-  );
+// Login com email e senha
+authRoutes.post("/login", authLimiter, async (req, res) => {
+  const parsed = LoginBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Dados inválidos" });
+  }
 
-  // Refresh — gera novo access token usando o refresh token do cookie
-  app.post("/refresh", async (req, res) => {
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) {
-      return res.status(401).send({ error: "Refresh token não encontrado" });
-    }
+  try {
+    const user = await autenticarUsuario(parsed.data.email, parsed.data.password);
 
-    const session = await validarSessao(refreshToken);
-    if (!session) {
-      return res.status(401).send({ error: "Refresh token inválido ou expirado" });
-    }
+    // Gera o Access Token JWT curto (15 minutos)
+    const accessToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN },
+    );
 
-    const accessToken = app.jwt.sign({
-      userId: session.user.id,
-      email: session.user.email,
+    // Gera o Refresh Token aleatório e persiste na sessão
+    const refreshToken = gerarRefreshToken();
+    const deviceId = (req.headers["x-device-id"] as string) || "unknown";
+    await salvarSessao(user.id, refreshToken, deviceId);
+
+    // Grava o refresh token em cookie seguro HttpOnly
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
+      path: "/api/v1/auth/refresh",
     });
-    return { accessToken };
-  });
 
-  // Logout — revoga a sessão e limpa o cookie
-  app.post("/logout", async (req, res) => {
-    const refreshToken = req.cookies?.refreshToken;
-    if (refreshToken) {
-      await revogarSessao(refreshToken);
-    }
-    res.clearCookie("refreshToken", { path: "/api/v1/auth/refresh" });
-    return { message: "Logout realizado" };
-  });
-}
+    return res.status(200).json({
+      accessToken,
+      user: { id: user.id, email: user.email },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erro interno";
+    return res.status(401).json({ error: message });
+  }
+});
+
+// Renovação de access token via cookie HttpOnly
+authRoutes.post("/refresh", async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+  if (!refreshToken) {
+    return res.status(401).json({ error: "Refresh token não encontrado" });
+  }
+
+  const session = await validarSessao(refreshToken);
+  if (!session) {
+    return res.status(401).json({ error: "Refresh token inválido ou expirado" });
+  }
+
+  // Gera novo Access Token
+  const accessToken = jwt.sign(
+    { userId: session.user.id, email: session.user.email },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN },
+  );
+
+  return res.status(200).json({ accessToken });
+});
+
+// Encerramento de sessão (logout)
+authRoutes.post("/logout", async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+  if (refreshToken) {
+    await revogarSessao(refreshToken);
+  }
+
+  res.clearCookie("refreshToken", { path: "/api/v1/auth/refresh" });
+  return res.status(200).json({ message: "Logout realizado" });
+});
