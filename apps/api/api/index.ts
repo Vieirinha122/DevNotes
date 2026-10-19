@@ -1,47 +1,23 @@
-import Fastify from "fastify";
-import cors from "@fastify/cors";
-import helmet from "@fastify/helmet";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { buildApp } from "../src/app";
 
 /**
- * Entry point Vercel Serverless — autossuficiente.
+ * Entry point Vercel Serverless.
  *
- * - Sem imports de ../src/ (evita erro de resolução ESM no runtime)
+ * - Importa buildApp() de src/app (mesmos plugins + routes do dev)
  * - Usa app.server.emit("request") em vez de app.inject()
- *   (evita conflito ESM/CJS do light-my-request com cookie@2)
- * - Framework Preset DEVE ser "Other" no dashboard da Vercel
+ *   (compatível com Vercel Functions sem awsLambdaFastify)
+ * - @vercel/node (esbuild) resolve imports relativos normalmente
+ *
+ * Nota: o Prisma Client usa DATABASE_URL (pooler) em runtime.
+ * migrations rodam localmente via prisma db push.
  */
 
-const app = Fastify({ logger: false });
-
-void app.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:5173"],
-});
-void app.register(helmet);
-
-// Rota raiz
-app.get("/", () => ({
-  status: "ok",
-  message: "DevNote API — online",
-  version: "0.0.0",
-  timestamp: new Date().toISOString(),
-}));
-
-// Health check
-app.get("/health", () => ({
-  status: "ok",
-  timestamp: new Date().toISOString(),
-}));
-
-// Hello world da API
-app.get("/api/v1", () => ({
-  message: "DevNote API — casca rodando",
-  version: "0.0.0",
-}));
-
+const app = buildApp();
 const readyPromise = app.ready();
 
 // Handler serverless — Vercel invoca esta função para cada request
-export default async function handler(req: any, res: any) {
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
   await readyPromise;
   app.server.emit("request", req, res);
 }

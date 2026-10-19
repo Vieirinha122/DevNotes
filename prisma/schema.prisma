@@ -1,6 +1,7 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -89,12 +90,13 @@ model NoteTag {
 
 /**
  * Refresh token para renovação de sessão.
- * Hash do token, nunca o token em si.
+ * Hash do token (sha256), nunca o token em si.
  */
 model Session {
   id         String    @id @default(uuid())
   userId     String    @map("user_id")
   hash       String
+  deviceId   String?   @map("device_id")
   expiresAt  DateTime  @map("expires_at")
   revokedAt  DateTime? @map("revoked_at")
   createdAt  DateTime  @default(now()) @map("created_at")

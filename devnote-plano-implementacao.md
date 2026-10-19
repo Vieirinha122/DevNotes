@@ -164,9 +164,9 @@ Cuidados: pedir `navigator.storage.persist()` para reduzir risco de o navegador 
 ## 8. Fases
 
 ### Fase 1 — MVP: app de notas básico
-- [ ] Monorepo, TypeScript, lint e CI básico.
-- [ ] Fastify + Prisma + Neon, migrations.
-- [ ] Cadastro, login, logout e refresh (senha com Argon2id ou scrypt).
+- [x] Monorepo, TypeScript, lint e CI básico.
+- [x] Fastify + Prisma + Neon, migrations.
+- [x] Cadastro, login, logout e refresh (bcrypt cost 12 — ADR-001 no vault; plano dizia Argon2id/scrypt mas decisão aprovada foi bcrypt).
 - [ ] CRUD de notas em Markdown, com editor e pré-visualização.
 - [ ] Tags, notas fixadas, checklists, lixeira recuperável.
 - [ ] Autosave com indicador de salvamento.
