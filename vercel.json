@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/web/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "apps/api/api/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["node_modules/**", "prisma/**"]
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/api/v1(.*)", "dest": "/apps/api/api/index.ts" },
+    { "src": "/(.*)", "dest": "/apps/web/$1" }
+  ]
+}

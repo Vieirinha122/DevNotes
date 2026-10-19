@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+.next
+.nuxt
+.output
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+*.log
+
+# Coverage
+coverage
+
+# Prisma
+prisma/*.db
+prisma/*.db.query
+.prisma
+
+# Temp
+tmp
+*.tmp

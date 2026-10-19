@@ -1,0 +1,140 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/**
+ * Usuário do app. Cada usuário tem suas próprias notas e tags.
+ */
+model User {
+  id          String     @id @default(uuid())
+  email       String     @unique
+  passwordHash String    @map("password_hash")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  notes       Note[]
+  tags        Tag[]
+  sessions    Session[]
+
+  @@map("users")
+}
+
+/**
+ * Nota pessoal. Pode ser note, checklist, snippet ou solution.
+ * UUID gerado no cliente para suportar escrita offline antes do sync.
+ */
+model Note {
+  id         String    @id
+  userId     String    @map("user_id")
+  title      String
+  content    String    @db.Text
+  kind       NoteKind  @default(NOTE)
+  metadata   Json?
+  isPinned   Boolean   @default(false) @map("is_pinned")
+  version    Int       @default(1)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @default(now()) @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  user       User      @relation(fields: [userId], references: [id])
+  noteTags   NoteTag[]
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+  @@map("notes")
+}
+
+enum NoteKind {
+  NOTE
+  CHECKLIST
+  SNIPPET
+  SOLUTION
+}
+
+/**
+ * Tag de organização. Cada usuário tem suas tags.
+ */
+model Tag {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  name      String
+  color     String    @default("#6b7280")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id])
+  noteTags  NoteTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+/**
+ * Relacionamento N:N entre notas e tags.
+ */
+model NoteTag {
+  noteId String @map("note_id")
+  tagId  String @map("tag_id")
+
+  note   Note   @relation(fields: [noteId], references: [id])
+  tag    Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([noteId, tagId])
+  @@map("note_tags")
+}
+
+/**
+ * Refresh token para renovação de sessão.
+ * Hash do token, nunca o token em si.
+ */
+model Session {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  hash       String
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+/**
+ * Operação de sync enfileirada no cliente.
+ * Idempotência garantida pelo operationId único.
+ */
+model SyncOperation {
+  operationId String   @id @map("operation_id")
+  userId      String   @map("user_id")
+  deviceId    String   @map("device_id")
+  entityId    String   @map("entity_id")
+  entityType  String   @map("entity_type")
+  opType      String   @map("op_type")
+  payload     Json
+  status      String   @default("pending")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId, status])
+  @@map("sync_operations")
+}
+
+/**
+ * Mudança confirmada no servidor. Cursor sequencial (seq autoincremento).
+ */
+model SyncChange {
+  seq        Int      @id @default(autoincrement())
+  userId     String   @map("user_id")
+  entityId   String   @map("entity_id")
+  entityType String   @map("entity_type")
+  changeType String   @map("change_type")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId, seq])
+  @@map("sync_changes")
+}

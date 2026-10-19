@@ -1,0 +1,27 @@
+{
+  "name": "devnote",
+  "private": true,
+  "version": "0.0.0",
+  "description": "App de notas pessoal que evolui para ferramenta de aprendizado de dev",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "format": "biome format --write .",
+    "typecheck": "tsc --build",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "@prisma/client": "^6.19.3",
+    "prisma": "6.19.3",
+    "turbo": "^2.2.0",
+    "typescript": "^5.6.0"
+  }
+}
