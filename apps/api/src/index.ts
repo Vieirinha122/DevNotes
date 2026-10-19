@@ -8,6 +8,9 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 
 export const app: Express = express();
 
+// Confia no proxy reverso da Vercel para identificar o IP real do cliente
+app.set("trust proxy", 1);
+
 // Middlewares de segurança e parse
 app.use(helmet());
 app.use(
@@ -25,6 +28,7 @@ const globalLimiter = rateLimit({
   limit: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false, forwardedHeader: false },
 });
 app.use(globalLimiter);
 
