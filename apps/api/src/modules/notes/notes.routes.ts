@@ -94,12 +94,19 @@ notesRoutes.post("/", async (req: Request, res: Response) => {
     const note = await criarNota(userId, parsed.data);
     return res.status(201).json(note);
   } catch (err: unknown) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      return res.status(409).json({ error: "Nota com este ID ja existe" });
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      const prismaErrorCode = err.code;
+
+      if (prismaErrorCode === "P2002") {
+        return res.status(409).json({ error: "Nota com este ID ja existe" });
+      }
     }
 
-    const message = err instanceof Error ? err.message : "Erro interno";
-    return res.status(500).json({ error: message });
+    if (err instanceof Error) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    return res.status(500).json({ error: "Erro interno" });
   }
 });
 
