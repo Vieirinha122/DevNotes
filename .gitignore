@@ -8,6 +8,7 @@ dist
 .nuxt
 .output
 .turbo
+*.tsbuildinfo
 apps/api/api/index.js
 
 # Environment
