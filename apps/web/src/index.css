@@ -37,6 +37,12 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   * {
     @apply border-border;
   }
@@ -47,6 +53,14 @@
 }
 
 @layer components {
+  .safe-top {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+
+  .safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
   /* ────────────────────────────────────────────
      Editor — container
      ──────────────────────────────────────────── */
@@ -62,6 +76,7 @@
   .devnote-editor__toolbar {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 2px;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid hsl(var(--border) / 0.4);
@@ -87,10 +102,19 @@
   }
 
   .devnote-editor__toolbar-hint {
-    margin-left: auto;
+    width: 100%;
+    padding-top: 0.35rem;
     font-size: 11px;
     font-family: var(--font-mono, ui-monospace, monospace);
     color: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  @media (min-width: 640px) {
+    .devnote-editor__toolbar-hint {
+      width: auto;
+      margin-left: auto;
+      padding-top: 0;
+    }
   }
 
   .devnote-editor__toolbar-hint kbd {
@@ -120,13 +144,14 @@
 
   .devnote-editor__body--with-preview {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 42%);
+    grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
     align-items: start;
   }
 
   .devnote-editor__pane {
     min-width: 0;
+    min-height: 44vh;
   }
 
   .devnote-editor__textarea {
@@ -140,11 +165,17 @@
     background: transparent;
     color: hsl(var(--foreground));
     font-family: inherit;
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.8;
     resize: none;
     overflow: hidden;
     caret-color: hsl(var(--primary));
+  }
+
+  @media (min-width: 640px) {
+    .devnote-editor__textarea {
+      font-size: 15px;
+    }
   }
 
   .devnote-editor__textarea::placeholder {
@@ -158,14 +189,35 @@
   .devnote-editor__preview-pane {
     min-width: 0;
     min-height: 100%;
-    padding-left: 2rem;
-    border-left: 1px solid hsl(var(--border) / 0.45);
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid hsl(var(--border) / 0.45);
     background: linear-gradient(
-      90deg,
+      180deg,
       transparent 0%,
       hsl(var(--card) / 0.1) 12%,
       hsl(var(--card) / 0.16) 100%
     );
+  }
+
+  @media (min-width: 1024px) {
+    .devnote-editor__body--with-preview {
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 42%);
+    }
+
+    .devnote-editor__preview-pane {
+      margin-top: 0;
+      padding-top: 0;
+      padding-left: 2rem;
+      border-top: none;
+      border-left: 1px solid hsl(var(--border) / 0.45);
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        hsl(var(--card) / 0.1) 12%,
+        hsl(var(--card) / 0.16) 100%
+      );
+    }
   }
 
   .devnote-editor__preview-header {
@@ -309,7 +361,8 @@
   }
 
   .devnote-reading-content blockquote {
-    border-left: 3px solid hsl(var(--primary) / 0.5);
+    border-left: 1px solid hsl(var(--primary) / 0.35);
+    background: linear-gradient(90deg, hsl(var(--primary) / 0.06), transparent 26%);
     padding-left: 1em;
     margin: 0.75em 0;
     color: hsl(var(--muted-foreground));

@@ -1,5 +1,16 @@
 import MarkdownPreview from "@uiw/react-markdown-preview";
-import { Calendar, Check, Copy, Edit3, FileText, Pin, Save, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  Check,
+  Copy,
+  Edit3,
+  FileText,
+  Pin,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
@@ -19,12 +30,14 @@ interface NoteWorkspaceProps {
   draftNote?: NoteItem | null;
   isDraftRecovered?: boolean;
   userEmail: string;
+  isCompact?: boolean;
   isLoading?: boolean;
   isSaving?: boolean;
   isDeleting?: boolean;
   errorMessage?: string | null;
   mutationErrorMessage?: string | null;
   onRetry?: () => void;
+  onBack?: () => void;
   onCreateNote?: (
     draft: Pick<NoteItem, "title" | "content" | "tags" | "isPinned" | "kind">,
   ) => Promise<void> | void;
@@ -51,12 +64,14 @@ export function NoteWorkspace({
   draftNote = null,
   isDraftRecovered = false,
   userEmail,
+  isCompact = false,
   isLoading = false,
   isSaving = false,
   isDeleting = false,
   errorMessage = null,
   mutationErrorMessage = null,
   onRetry,
+  onBack,
   onCreateNote,
   onDraftChange,
   onDiscardDraft,
@@ -228,8 +243,8 @@ export function NoteWorkspace({
 
   if (isLoading) {
     return (
-      <div className="flex flex-1 flex-col bg-background">
-        <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-4 px-8 py-8">
+      <div className="flex min-h-screen flex-1 flex-col bg-background">
+        <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-4 px-4 py-6 sm:px-8 sm:py-8">
           <div className="h-6 w-32 animate-pulse rounded bg-white/10" />
           <div className="h-10 w-2/3 animate-pulse rounded bg-white/10" />
           <div className="h-32 w-full animate-pulse rounded bg-white/5" />
@@ -241,7 +256,7 @@ export function NoteWorkspace({
 
   if (errorMessage) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-background p-8 text-center">
+      <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-background p-6 text-center sm:p-8">
         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300">
           <FileText className="h-6 w-6" />
         </div>
@@ -258,7 +273,7 @@ export function NoteWorkspace({
 
   if (!activeNote) {
     return (
-      <div className="flex flex-1 select-none flex-col items-center justify-center bg-background p-8 text-center text-muted-foreground">
+      <div className="flex min-h-screen flex-1 select-none flex-col items-center justify-center bg-background p-6 text-center text-muted-foreground sm:p-8">
         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-card text-muted-foreground/60">
           <FileText className="h-6 w-6" />
         </div>
@@ -339,6 +354,19 @@ export function NoteWorkspace({
     setIsDiscardDialogOpen(true);
   };
 
+  const handleBackNavigation = () => {
+    if (isDraftMode) {
+      handleDiscardDraftClick();
+      return;
+    }
+
+    if (isEditing) {
+      resetToOriginalState();
+    }
+
+    onBack?.();
+  };
+
   const handleReadingCheckboxChange = (event: React.FormEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
     const checkbox =
@@ -408,9 +436,24 @@ export function NoteWorkspace({
   };
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden bg-background">
-      <header className="flex shrink-0 items-center justify-between border-b border-border/40 bg-card/20 px-6 py-2.5">
-        <div className="flex items-center gap-3">
+    <div className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background">
+      <header
+        className={cn(
+          "flex shrink-0 items-center justify-between border-b border-border/40 bg-card/20",
+          isCompact ? "safe-top px-4 py-3" : "px-6 py-2.5",
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          {isCompact && onBack && (
+            <button
+              type="button"
+              onClick={handleBackNavigation}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-card/60 text-muted-foreground transition-colors hover:text-foreground"
+              title="Voltar para lista"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          )}
           <span className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground/80">
             <span className="inline-block h-2 w-2 rounded-full bg-primary" />
             {isDraftMode ? "Rascunho local" : isEditing ? "Editando" : "Leitura"}
@@ -420,7 +463,7 @@ export function NoteWorkspace({
           )}
         </div>
 
-        <div className="flex items-center space-x-2 text-xs font-mono">
+        <div className="flex flex-wrap items-center justify-end gap-2 text-xs font-mono">
           {!isEditing ? (
             <>
               {activeNote.content && (
@@ -429,7 +472,7 @@ export function NoteWorkspace({
                   variant="outline"
                   size="sm"
                   onClick={handleCopyContent}
-                  className="h-7 gap-1 px-2.5 text-[11px] font-mono"
+                  className="h-8 gap-1 px-2.5 text-[11px] font-mono sm:h-7"
                 >
                   {copied ? (
                     <>
@@ -450,7 +493,7 @@ export function NoteWorkspace({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="h-7 gap-1 px-2.5 text-[11px] font-mono"
+                className="h-8 gap-1 px-2.5 text-[11px] font-mono sm:h-7"
               >
                 <Edit3 className="h-3 w-3" />
                 <span>{isDraftMode ? "Continuar" : "Editar"}</span>
@@ -493,7 +536,7 @@ export function NoteWorkspace({
                   variant="outline"
                   size="sm"
                   onClick={handleDiscardDraftClick}
-                  className="h-7 gap-1 border-rose-500/30 px-2.5 text-[11px] font-mono text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
+                  className="h-8 gap-1 border-rose-500/30 px-2.5 text-[11px] font-mono text-rose-400 hover:bg-rose-500/15 hover:text-rose-300 sm:h-7"
                 >
                   <Trash2 className="h-3 w-3" />
                   <span>Descartar</span>
@@ -504,7 +547,7 @@ export function NoteWorkspace({
                 variant="outline"
                 size="sm"
                 onClick={resetToOriginalState}
-                className="h-7 gap-1 px-2.5 text-[11px] font-mono"
+                className="h-8 gap-1 px-2.5 text-[11px] font-mono sm:h-7"
               >
                 <X className="h-3 w-3" />
                 <span>Cancelar</span>
@@ -517,7 +560,7 @@ export function NoteWorkspace({
                 onClick={() => {
                   void salvarNota();
                 }}
-                className="h-7 gap-1 px-2.5 text-[11px] font-mono"
+                className="h-8 gap-1 px-2.5 text-[11px] font-mono sm:h-7"
               >
                 <Save className="h-3 w-3" />
                 <span>{isDraftMode ? "Salvar Nota" : "Salvar"}</span>
@@ -529,14 +572,14 @@ export function NoteWorkspace({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {mutationErrorMessage && (
-          <div className="mx-6 mt-6 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          <div className="mx-4 mt-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 sm:mx-6 sm:mt-6">
             {mutationErrorMessage}
           </div>
         )}
 
         {!isEditing ? (
           <div className="flex-1 overflow-y-auto">
-            <article className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-6 lg:px-8">
+            <article className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
               {activeNote.tags.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5">
                   {activeNote.tags.map((tag) => (
@@ -551,7 +594,7 @@ export function NoteWorkspace({
               )}
 
               <div className="space-y-3 border-b border-border/40 pb-5">
-                <h1 className="text-3xl font-semibold leading-tight tracking-[-0.03em] text-foreground lg:text-4xl">
+                <h1 className="text-2xl font-semibold leading-tight tracking-[-0.03em] text-foreground sm:text-3xl lg:text-4xl">
                   {activeNote.title || "Nova anotacao"}
                 </h1>
                 <div className="flex items-center space-x-3 text-xs font-mono text-muted-foreground/70">
@@ -564,7 +607,7 @@ export function NoteWorkspace({
 
               {activeNote.content ? (
                 <div
-                  className="min-h-[55vh] rounded-2xl border border-border/50 bg-card/30 p-5 selection:bg-primary/20"
+                  className="min-h-[45vh] rounded-2xl border border-border/50 bg-card/30 p-4 selection:bg-primary/20 sm:min-h-[55vh] sm:p-5"
                   data-color-mode="dark"
                   onChange={handleReadingCheckboxChange}
                 >
@@ -587,7 +630,7 @@ export function NoteWorkspace({
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className="min-h-[55vh] w-full cursor-pointer rounded-2xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                  className="min-h-[45vh] w-full cursor-pointer rounded-2xl border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground sm:min-h-[55vh] sm:p-8"
                 >
                   Esta nota esta pronta para escrever. Clique aqui e continue do ponto em que voce
                   parou.
@@ -600,7 +643,12 @@ export function NoteWorkspace({
             onSubmit={(event) => void handleSave(event)}
             className="flex h-full flex-col overflow-hidden"
           >
-            <div className="border-b border-border/40 bg-card/20 px-6 py-6 lg:px-8">
+            <div
+              className={cn(
+                "border-b border-border/40 bg-card/20",
+                isCompact ? "px-4 py-4" : "px-6 py-6 lg:px-8",
+              )}
+            >
               <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
                 <div className="space-y-2">
                   <input
@@ -622,7 +670,7 @@ export function NoteWorkspace({
                     }}
                     placeholder="Nova anotacao"
                     className={cn(
-                      "w-full rounded-2xl border bg-card/50 px-4 py-3 text-3xl font-semibold tracking-[-0.03em] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 lg:text-4xl",
+                      "w-full rounded-2xl border bg-card/50 px-4 py-3 text-2xl font-semibold tracking-[-0.03em] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 sm:text-3xl lg:text-4xl",
                       titleError
                         ? "border-rose-500/70 focus:border-rose-500 focus:ring-rose-500/30"
                         : "border-border/60 focus:border-primary focus:ring-primary/40",
@@ -656,7 +704,12 @@ export function NoteWorkspace({
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden px-6 py-6 lg:px-8">
+            <div
+              className={cn(
+                "flex-1 overflow-hidden",
+                isCompact ? "px-4 py-4" : "px-6 py-6 lg:px-8",
+              )}
+            >
               <div className="mx-auto flex h-full w-full max-w-6xl flex-col">
                 <MarkdownEditor
                   id="note-content"
@@ -669,14 +722,19 @@ export function NoteWorkspace({
               </div>
             </div>
 
-            <div className="border-t border-border/40 bg-card/30 px-6 py-3 lg:px-8">
-              <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
+            <div
+              className={cn(
+                "border-t border-border/40 bg-card/30",
+                isCompact ? "safe-bottom px-4 py-3" : "px-6 py-3 lg:px-8",
+              )}
+            >
+              <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[11px] font-mono text-muted-foreground/70">
                   {isDraftMode
                     ? "Rascunho local ativo ate voce salvar."
                     : "Rascunho local protegido durante a edicao."}
                 </p>
-                <div className="flex items-center justify-end space-x-2">
+                <div className="flex items-center justify-end">
                   <Button
                     type="button"
                     variant={isPreviewingMarkdown ? "secondary" : "ghost"}
@@ -689,12 +747,6 @@ export function NoteWorkspace({
                     )}
                   >
                     {isPreviewingMarkdown ? "Ocultar preview" : "Preview markdown"}
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={resetToOriginalState}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" variant="primary" size="sm" isLoading={isSaving}>
-                    {isDraftMode ? "Salvar Nota" : "Salvar"}
                   </Button>
                 </div>
               </div>

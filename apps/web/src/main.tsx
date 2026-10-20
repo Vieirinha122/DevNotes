@@ -3,6 +3,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "@uiw/react-markdown-preview/markdown.css";
 import "@uiw/react-md-editor/markdown-editor.css";
+import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import "./index.css";
 
@@ -18,6 +19,10 @@ const queryClient = new QueryClient({
 
 const container = document.getElementById("root");
 if (!container) throw new Error("#root nao encontrado no DOM");
+
+registerSW({
+  immediate: true,
+});
 
 ReactDOM.createRoot(container).render(
   <React.StrictMode>

@@ -17,8 +17,37 @@ interface HomePageProps {
 const notesQueryKey = (search: string, filterType: CategoryFilter) =>
   ["notes", { search, filterType }] as const;
 
+function useIsCompactLayout() {
+  const [isCompactLayout, setIsCompactLayout] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return window.matchMedia("(max-width: 1023px)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsCompactLayout(event.matches);
+    };
+
+    setIsCompactLayout(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  return isCompactLayout;
+}
+
 export function HomePage({ user, onLogout }: HomePageProps) {
   const queryClient = useQueryClient();
+  const isCompactLayout = useIsCompactLayout();
   const [initialDraftState] = useState(() => {
     const loadedDraft = loadNewDraft(user.email);
 
@@ -79,9 +108,13 @@ export function HomePage({ user, onLogout }: HomePageProps) {
         return NEW_NOTE_DRAFT_ID;
       }
 
+      if (isCompactLayout) {
+        return null;
+      }
+
       return notes[0]?.id ?? null;
     });
-  }, [newDraft, notes]);
+  }, [isCompactLayout, newDraft, notes]);
 
   const createNoteMutation = useMutation({
     mutationFn: createNote,
@@ -124,6 +157,7 @@ export function HomePage({ user, onLogout }: HomePageProps) {
   }, [notes, selectedItemId]);
 
   const selectedDraft = selectedItemId === NEW_NOTE_DRAFT_ID ? newDraft : null;
+  const shouldShowWorkspaceOnCompact = isCompactLayout && Boolean(selectedDraft ?? selectedNote);
 
   const handleNewNote = () => {
     setFilterType("all");
@@ -164,7 +198,7 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     clearNewDraft(user.email);
     setIsDraftRecovered(false);
     setNewDraft(null);
-    setSelectedItemId(notes[0]?.id ?? null);
+    setSelectedItemId(isCompactLayout ? null : (notes[0]?.id ?? null));
   };
 
   const handleCreateNote = async (
@@ -211,48 +245,55 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     createNoteMutation.error ?? updateNoteMutation.error ?? deleteNoteMutation.error;
 
   return (
-    <div className="flex h-screen w-full select-none overflow-hidden bg-background antialiased">
-      <NoteList
-        userEmail={user.email}
-        userName={user.name ?? null}
-        onLogout={onLogout}
-        notes={notes}
-        draftNote={newDraft}
-        isLoading={notesQuery.isLoading}
-        selectedItemId={selectedItemId}
-        onSelectNote={setSelectedItemId}
-        onSelectDraft={() => setSelectedItemId(NEW_NOTE_DRAFT_ID)}
-        onNewNote={handleNewNote}
-        isCreatingNote={false}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        filterType={filterType}
-        onFilterTypeChange={setFilterType}
-        onDeleteNote={handleDeleteNote}
-      />
-
-      <main className="flex flex-1 overflow-hidden">
-        <NoteWorkspace
-          note={selectedNote}
-          draftNote={selectedDraft}
+    <div className="flex min-h-screen w-full select-none overflow-hidden bg-background antialiased">
+      {(!isCompactLayout || !shouldShowWorkspaceOnCompact) && (
+        <NoteList
           userEmail={user.email}
+          userName={user.name ?? null}
+          onLogout={onLogout}
+          notes={notes}
+          draftNote={newDraft}
           isLoading={notesQuery.isLoading}
-          errorMessage={notesQuery.error instanceof Error ? notesQuery.error.message : null}
-          mutationErrorMessage={mutationError instanceof Error ? mutationError.message : null}
-          onRetry={() => {
-            void notesQuery.refetch();
-          }}
-          isSaving={createNoteMutation.isPending || updateNoteMutation.isPending}
-          isDeleting={deleteNoteMutation.isPending}
-          onCreateNote={handleCreateNote}
-          onDraftChange={handleDraftChange}
-          onDiscardDraft={handleDiscardDraft}
-          isDraftRecovered={isDraftRecovered}
-          onUpdateNote={handleUpdateNote}
+          isCompact={isCompactLayout}
+          selectedItemId={selectedItemId}
+          onSelectNote={setSelectedItemId}
+          onSelectDraft={() => setSelectedItemId(NEW_NOTE_DRAFT_ID)}
+          onNewNote={handleNewNote}
+          isCreatingNote={false}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filterType={filterType}
+          onFilterTypeChange={setFilterType}
           onDeleteNote={handleDeleteNote}
-          onTogglePin={handleTogglePin}
         />
-      </main>
+      )}
+
+      {(!isCompactLayout || shouldShowWorkspaceOnCompact) && (
+        <main className="flex min-w-0 flex-1 overflow-hidden">
+          <NoteWorkspace
+            note={selectedNote}
+            draftNote={selectedDraft}
+            userEmail={user.email}
+            isCompact={isCompactLayout}
+            onBack={isCompactLayout ? () => setSelectedItemId(null) : undefined}
+            isLoading={notesQuery.isLoading}
+            errorMessage={notesQuery.error instanceof Error ? notesQuery.error.message : null}
+            mutationErrorMessage={mutationError instanceof Error ? mutationError.message : null}
+            onRetry={() => {
+              void notesQuery.refetch();
+            }}
+            isSaving={createNoteMutation.isPending || updateNoteMutation.isPending}
+            isDeleting={deleteNoteMutation.isPending}
+            onCreateNote={handleCreateNote}
+            onDraftChange={handleDraftChange}
+            onDiscardDraft={handleDiscardDraft}
+            isDraftRecovered={isDraftRecovered}
+            onUpdateNote={handleUpdateNote}
+            onDeleteNote={handleDeleteNote}
+            onTogglePin={handleTogglePin}
+          />
+        </main>
+      )}
     </div>
   );
 }
