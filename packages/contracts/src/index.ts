@@ -5,6 +5,11 @@ import { z } from "zod";
  * Definem a validação de entrada/saída (DTOs) em um único lugar.
  */
 export const RegisterBodySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Nome precisa ter pelo menos 2 caracteres")
+    .max(120, "Nome muito longo"),
   email: z.string().email("Email inválido"),
   password: z
     .string()

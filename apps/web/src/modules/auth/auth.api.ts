@@ -4,10 +4,12 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
 export interface AuthResponse {
   id?: string;
+  name?: string | null;
   email?: string;
   accessToken?: string;
   user?: {
     id: string;
+    name?: string | null;
     email: string;
   };
   error?: string;

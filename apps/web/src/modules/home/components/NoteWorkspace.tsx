@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { cn } from "../../../lib/utils";
-import { clearExistingDraft, clearNewDraft, loadExistingDraft, saveExistingDraft } from "../draft-storage";
+import { clearExistingDraft, loadExistingDraft, saveExistingDraft } from "../draft-storage";
 import {
   formatMarkdownForPreview,
   formatNoteWorkspaceTimestamp,
@@ -88,6 +88,9 @@ export function NoteWorkspace({
       lastHydratedKeyRef.current = null;
       setIsEditing(false);
       setHasRecoveredDraft(false);
+      setIsDeleteDialogOpen(false);
+      setIsDiscardDialogOpen(false);
+      setIsPreviewingMarkdown(false);
       setTitleError(null);
       return;
     }
@@ -107,6 +110,7 @@ export function NoteWorkspace({
       setEditTags(draftNote.tags.join(", "));
       setEditContent(draftNote.content);
       setHasRecoveredDraft(isDraftRecovered);
+      setIsPreviewingMarkdown(true);
       setIsEditing(true);
       setTitleError(null);
       return;
@@ -119,6 +123,7 @@ export function NoteWorkspace({
       setEditTags(storedDraft.tags.join(", "));
       setEditContent(storedDraft.content);
       setHasRecoveredDraft(true);
+      setIsPreviewingMarkdown(true);
       setIsEditing(true);
       setTitleError(null);
       return;
@@ -128,6 +133,7 @@ export function NoteWorkspace({
     setEditTags(activeNote.tags.join(", "));
     setEditContent(activeNote.content);
     setHasRecoveredDraft(false);
+    setIsPreviewingMarkdown(true);
     setIsEditing(false);
     setTitleError(null);
   }, [activeNote, draftNote, isDraftRecovered, userEmail]);
@@ -138,6 +144,15 @@ export function NoteWorkspace({
     }
 
     if (isDraftMode) {
+      const hasDraftChanges =
+        editTitle !== activeNote.title ||
+        editContent !== activeNote.content ||
+        normalizedTags.join(",") !== activeNote.tags.join(",");
+
+      if (!hasDraftChanges) {
+        return;
+      }
+
       onDraftChange?.({
         ...activeNote,
         title: editTitle,
@@ -277,7 +292,8 @@ export function NoteWorkspace({
       setEditTitle(draftNote.title);
       setEditTags(draftNote.tags.join(", "));
       setEditContent(draftNote.content);
-      setIsPreviewingMarkdown(false);
+      setIsPreviewingMarkdown(true);
+      setIsDiscardDialogOpen(false);
       setIsEditing(false);
       setTitleError(null);
       return;
@@ -292,6 +308,8 @@ export function NoteWorkspace({
     setEditTags(note.tags.join(", "));
     setEditContent(note.content);
     setHasRecoveredDraft(false);
+    setIsDiscardDialogOpen(false);
+    setIsPreviewingMarkdown(true);
     setIsEditing(false);
     setTitleError(null);
   };
@@ -302,21 +320,16 @@ export function NoteWorkspace({
     setEditTags("");
     setIsEditing(false);
     setHasRecoveredDraft(false);
+    setIsPreviewingMarkdown(true);
     setTitleError(null);
     setIsDiscardDialogOpen(false);
     lastHydratedKeyRef.current = null;
     lastFocusedKeyRef.current = null;
-    clearNewDraft(userEmail);
-    if (note?.id) {
-      clearExistingDraft(userEmail, note.id);
-    }
     onDiscardDraft?.();
   };
 
   const handleDiscardDraftClick = () => {
-    const hasContent = Boolean(
-      editTitle.trim() || editContent.trim() || editTags.trim(),
-    );
+    const hasContent = Boolean(editTitle.trim() || editContent.trim() || editTags.trim());
 
     if (!hasContent) {
       executeDiscardDraft();
@@ -326,7 +339,7 @@ export function NoteWorkspace({
     setIsDiscardDialogOpen(true);
   };
 
-  const handleReadingCheckboxClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleReadingCheckboxChange = (event: React.FormEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
     const checkbox =
       target instanceof HTMLInputElement && target.type === "checkbox"
@@ -553,7 +566,7 @@ export function NoteWorkspace({
                 <div
                   className="min-h-[55vh] rounded-2xl border border-border/50 bg-card/30 p-5 selection:bg-primary/20"
                   data-color-mode="dark"
-                  onClick={handleReadingCheckboxClick}
+                  onChange={handleReadingCheckboxChange}
                 >
                   <MarkdownPreview
                     source={formatMarkdownForPreview(activeNote.content)}
@@ -671,7 +684,8 @@ export function NoteWorkspace({
                     onClick={() => setIsPreviewingMarkdown((current) => !current)}
                     className={cn(
                       "text-xs font-mono transition-colors",
-                      isPreviewingMarkdown && "border border-white/15 bg-white/10 font-semibold text-foreground",
+                      isPreviewingMarkdown &&
+                        "border border-white/15 bg-white/10 font-semibold text-foreground",
                     )}
                   >
                     {isPreviewingMarkdown ? "Ocultar preview" : "Preview markdown"}
@@ -717,7 +731,8 @@ export function NoteWorkspace({
         title="Descartar rascunho"
         description={
           <>
-            Deseja descartar as alteracoes deste rascunho? Todo o conteudo preenchido sera perdido permanentemente.
+            Deseja descartar as alteracoes deste rascunho? Todo o conteudo preenchido sera perdido
+            permanentemente.
           </>
         }
         confirmLabel="Descartar rascunho"

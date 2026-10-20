@@ -11,20 +11,11 @@ import {
   validarSessao,
 } from "./auth.service.js";
 
-/**
- * Rotas de autenticação (Express Router):
- * - POST /register
- * - POST /login
- * - POST /refresh
- * - POST /logout
- */
 export const authRoutes: Router = Router();
 
-// Configurações do token JWT
 const JWT_SECRET = process.env.JWT_ACCESS_SECRET || "dev-access-secret-change-me";
 const JWT_EXPIRES_IN = Number(process.env.JWT_ACCESS_TTL) || 900;
 
-// Rate limit mais restritivo para proteção contra brute force (5 req/min)
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 5,
@@ -34,15 +25,14 @@ const authLimiter = rateLimit({
   message: { error: "Muitas tentativas. Tente novamente em 1 minuto." },
 });
 
-// Cadastro de usuário
 authRoutes.post("/register", authLimiter, async (req, res) => {
   const parsed = RegisterBodySchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "Dados inválidos", details: parsed.error.errors });
+    return res.status(400).json({ error: "Dados invalidos", details: parsed.error.errors });
   }
 
   try {
-    const user = await registrarUsuario(parsed.data.email, parsed.data.password);
+    const user = await registrarUsuario(parsed.data.name, parsed.data.email, parsed.data.password);
     return res.status(201).json(user);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erro interno";
@@ -50,38 +40,34 @@ authRoutes.post("/register", authLimiter, async (req, res) => {
   }
 });
 
-// Login com email e senha
 authRoutes.post("/login", authLimiter, async (req, res) => {
   const parsed = LoginBodySchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "Dados inválidos" });
+    return res.status(400).json({ error: "Dados invalidos" });
   }
 
   try {
     const user = await autenticarUsuario(parsed.data.email, parsed.data.password);
 
-    // Gera o Access Token JWT curto (15 minutos)
     const accessToken = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
 
-    // Gera o Refresh Token aleatório e persiste na sessão
     const refreshToken = gerarRefreshToken();
     const deviceId = (req.headers["x-device-id"] as string) || "unknown";
     await salvarSessao(user.id, refreshToken, deviceId);
 
-    // Grava o refresh token em cookie seguro HttpOnly
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/api/v1/auth/refresh",
     });
 
     return res.status(200).json({
       accessToken,
-      user: { id: user.id, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erro interno";
@@ -89,27 +75,27 @@ authRoutes.post("/login", authLimiter, async (req, res) => {
   }
 });
 
-// Renovação de access token via cookie HttpOnly
 authRoutes.post("/refresh", async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
   if (!refreshToken) {
-    return res.status(401).json({ error: "Refresh token não encontrado" });
+    return res.status(401).json({ error: "Refresh token nao encontrado" });
   }
 
   const session = await validarSessao(refreshToken);
   if (!session) {
-    return res.status(401).json({ error: "Refresh token inválido ou expirado" });
+    return res.status(401).json({ error: "Refresh token invalido ou expirado" });
   }
 
-  // Gera novo Access Token
   const accessToken = jwt.sign({ userId: session.user.id, email: session.user.email }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
 
-  return res.status(200).json({ accessToken });
+  return res.status(200).json({
+    accessToken,
+    user: { id: session.user.id, name: session.user.name, email: session.user.email },
+  });
 });
 
-// Encerramento de sessão (logout)
 authRoutes.post("/logout", async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
   if (refreshToken) {

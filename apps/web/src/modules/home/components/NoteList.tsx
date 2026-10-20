@@ -6,6 +6,7 @@ import type { CategoryFilter, NoteItem } from "../types";
 
 interface NoteListProps {
   userEmail: string;
+  userName?: string | null;
   onLogout: () => void;
   notes: NoteItem[];
   draftNote?: NoteItem | null;
@@ -26,6 +27,7 @@ const loadingSkeletonKeys = ["loading-1", "loading-2", "loading-3", "loading-4"]
 
 export function NoteList({
   userEmail,
+  userName = null,
   onLogout,
   notes,
   draftNote = null,
@@ -56,9 +58,9 @@ export function NoteList({
         <div className="flex items-center space-x-2">
           <span
             className="max-w-[130px] truncate text-[11px] font-mono text-muted-foreground/80"
-            title={userEmail}
+            title={userName?.trim() || userEmail}
           >
-            {userEmail.split("@")[0]}
+            {userName?.trim() || userEmail.split("@")[0]}
           </span>
           <button
             type="button"

@@ -4,12 +4,7 @@ import { ApiError } from "../../lib/api";
 import type { UserSession } from "../auth/AuthPage";
 import { NoteList } from "./components/NoteList";
 import { NoteWorkspace } from "./components/NoteWorkspace";
-import {
-  clearNewDraft,
-  createEmptyDraftNote,
-  loadNewDraft,
-  saveNewDraft,
-} from "./draft-storage";
+import { clearNewDraft, createEmptyDraftNote, loadNewDraft, saveNewDraft } from "./draft-storage";
 import { createNote, deleteNote, listNotes, updateNote } from "./notes.api";
 import type { CategoryFilter, NoteItem } from "./types";
 import { NEW_NOTE_DRAFT_ID } from "./types";
@@ -33,12 +28,8 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     };
   });
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [newDraft, setNewDraft] = useState<NoteItem | null>(
-    initialDraftState.draft,
-  );
-  const [isDraftRecovered, setIsDraftRecovered] = useState(
-    initialDraftState.recovered,
-  );
+  const [newDraft, setNewDraft] = useState<NoteItem | null>(initialDraftState.draft);
+  const [isDraftRecovered, setIsDraftRecovered] = useState(initialDraftState.recovered);
   const [filterType, setFilterType] = useState<CategoryFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -58,10 +49,7 @@ export function HomePage({ user, onLogout }: HomePageProps) {
   const notes = notesQuery.data ?? [];
 
   useEffect(() => {
-    if (
-      notesQuery.error instanceof ApiError &&
-      notesQuery.error.status === 401
-    ) {
+    if (notesQuery.error instanceof ApiError && notesQuery.error.status === 401) {
       onLogout();
     }
   }, [notesQuery.error, onLogout]);
@@ -102,29 +90,18 @@ export function HomePage({ user, onLogout }: HomePageProps) {
       setIsDraftRecovered(false);
       setNewDraft(null);
       setSelectedItemId(createdNote.id);
-      queryClient.setQueriesData<NoteItem[]>(
-        { queryKey: ["notes"] },
-        (currentNotes) => {
-          const normalizedNotes = currentNotes ?? [];
+      queryClient.setQueriesData<NoteItem[]>({ queryKey: ["notes"] }, (currentNotes) => {
+        const normalizedNotes = currentNotes ?? [];
 
-          return [
-            createdNote,
-            ...normalizedNotes.filter((note) => note.id !== createdNote.id),
-          ];
-        },
-      );
+        return [createdNote, ...normalizedNotes.filter((note) => note.id !== createdNote.id)];
+      });
       await queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
   });
 
   const updateNoteMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: Parameters<typeof updateNote>[1];
-    }) => updateNote(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateNote>[1] }) =>
+      updateNote(id, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
@@ -165,8 +142,22 @@ export function HomePage({ user, onLogout }: HomePageProps) {
   };
 
   const handleDraftChange = (draft: NoteItem) => {
-    setNewDraft(draft);
-    saveNewDraft(user.email, draft);
+    setNewDraft((currentDraft) => {
+      if (
+        currentDraft &&
+        currentDraft.title === draft.title &&
+        currentDraft.content === draft.content &&
+        currentDraft.isPinned === draft.isPinned &&
+        currentDraft.kind === draft.kind &&
+        currentDraft.version === draft.version &&
+        currentDraft.tags.join(",") === draft.tags.join(",")
+      ) {
+        return currentDraft;
+      }
+
+      saveNewDraft(user.email, draft);
+      return draft;
+    });
   };
 
   const handleDiscardDraft = () => {
@@ -217,14 +208,13 @@ export function HomePage({ user, onLogout }: HomePageProps) {
   };
 
   const mutationError =
-    createNoteMutation.error ??
-    updateNoteMutation.error ??
-    deleteNoteMutation.error;
+    createNoteMutation.error ?? updateNoteMutation.error ?? deleteNoteMutation.error;
 
   return (
     <div className="flex h-screen w-full select-none overflow-hidden bg-background antialiased">
       <NoteList
         userEmail={user.email}
+        userName={user.name ?? null}
         onLogout={onLogout}
         notes={notes}
         draftNote={newDraft}
@@ -247,18 +237,12 @@ export function HomePage({ user, onLogout }: HomePageProps) {
           draftNote={selectedDraft}
           userEmail={user.email}
           isLoading={notesQuery.isLoading}
-          errorMessage={
-            notesQuery.error instanceof Error ? notesQuery.error.message : null
-          }
-          mutationErrorMessage={
-            mutationError instanceof Error ? mutationError.message : null
-          }
+          errorMessage={notesQuery.error instanceof Error ? notesQuery.error.message : null}
+          mutationErrorMessage={mutationError instanceof Error ? mutationError.message : null}
           onRetry={() => {
             void notesQuery.refetch();
           }}
-          isSaving={
-            createNoteMutation.isPending || updateNoteMutation.isPending
-          }
+          isSaving={createNoteMutation.isPending || updateNoteMutation.isPending}
           isDeleting={deleteNoteMutation.isPending}
           onCreateNote={handleCreateNote}
           onDraftChange={handleDraftChange}
