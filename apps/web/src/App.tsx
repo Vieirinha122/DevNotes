@@ -1,9 +1,11 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AuthPage, type UserSession } from "./modules/auth/AuthPage";
+import { logoutUser } from "./modules/auth/auth.api";
 import { HomePage } from "./modules/home/HomePage";
 
 export default function App() {
-  // Inicializa o estado lendo a sessão salva no localStorage
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<UserSession | null>(() => {
     try {
       const saved = localStorage.getItem("devnote_user");
@@ -13,23 +15,21 @@ export default function App() {
     }
   });
 
-  // Callback de sucesso da autenticação (login ou registro)
   const handleAuthSuccess = (authenticatedUser: UserSession) => {
     setUser(authenticatedUser);
   };
 
-  // Encerra a sessão e retorna para a tela de autenticação
   const handleLogout = () => {
+    void logoutUser();
     localStorage.removeItem("devnote_access_token");
     localStorage.removeItem("devnote_user");
+    queryClient.clear();
     setUser(null);
   };
 
-  // Redirecionamento condicional: se logado, exibe o Workspace (Home)
   if (user) {
     return <HomePage user={user} onLogout={handleLogout} />;
   }
 
-  // Se não autenticado, exibe a tela de login/cadastro
   return <AuthPage onSuccess={handleAuthSuccess} />;
 }

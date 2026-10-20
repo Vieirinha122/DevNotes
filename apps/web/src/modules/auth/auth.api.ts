@@ -13,17 +13,13 @@ export interface AuthResponse {
   error?: string;
 }
 
-/**
- * Realiza login enviando email e senha.
- * Retorna access token e dados do usuário autenticado.
- */
 export async function loginUser(credentials: LoginInput): Promise<AuthResponse> {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    credentials: "include", // Envia e recebe cookie HttpOnly de refresh token
+    credentials: "include",
     body: JSON.stringify(credentials),
   });
 
@@ -36,9 +32,6 @@ export async function loginUser(credentials: LoginInput): Promise<AuthResponse> 
   return data;
 }
 
-/**
- * Cadastra novo usuário com email e senha.
- */
 export async function registerUser(credentials: RegisterInput): Promise<AuthResponse> {
   const response = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
@@ -52,8 +45,15 @@ export async function registerUser(credentials: RegisterInput): Promise<AuthResp
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || "Falha ao registrar usuário");
+    throw new Error(data.error || "Falha ao registrar usuario");
   }
 
   return data;
+}
+
+export async function logoutUser(): Promise<void> {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
 }

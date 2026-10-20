@@ -45,3 +45,401 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
+
+@layer components {
+  /* ────────────────────────────────────────────
+     Editor — container
+     ──────────────────────────────────────────── */
+  .devnote-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* ────────────────────────────────────────────
+     Editor — toolbar
+     ──────────────────────────────────────────── */
+  .devnote-editor__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid hsl(var(--border) / 0.4);
+  }
+
+  .devnote-editor__toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .devnote-editor__toolbar-btn:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--foreground));
+  }
+
+  .devnote-editor__toolbar-hint {
+    margin-left: auto;
+    font-size: 11px;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    color: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  .devnote-editor__toolbar-hint kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    margin: 0 2px;
+    border-radius: 4px;
+    border: 1px solid hsl(var(--border) / 0.6);
+    background: hsl(var(--card) / 0.5);
+    font-size: 11px;
+    font-family: inherit;
+    color: hsl(var(--muted-foreground) / 0.8);
+  }
+
+  /* ────────────────────────────────────────────
+     Editor — textarea body (Notion-style)
+     ──────────────────────────────────────────── */
+  .devnote-editor__body {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 1rem;
+  }
+
+  .devnote-editor__body--with-preview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 42%);
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .devnote-editor__pane {
+    min-width: 0;
+  }
+
+  .devnote-editor__textarea {
+    display: block;
+    width: 100%;
+    min-height: 100%;
+    padding: 0;
+    margin: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: hsl(var(--foreground));
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.8;
+    resize: none;
+    overflow: hidden;
+    caret-color: hsl(var(--primary));
+  }
+
+  .devnote-editor__textarea::placeholder {
+    color: hsl(var(--muted-foreground) / 0.35);
+  }
+
+  .devnote-editor__textarea::selection {
+    background: hsl(var(--primary) / 0.2);
+  }
+
+  .devnote-editor__preview-pane {
+    min-width: 0;
+    min-height: 100%;
+    padding-left: 2rem;
+    border-left: 1px solid hsl(var(--border) / 0.45);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--card) / 0.1) 12%,
+      hsl(var(--card) / 0.16) 100%
+    );
+  }
+
+  .devnote-editor__preview-header {
+    margin-bottom: 0.75rem;
+    font-size: 11px;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    color: hsl(var(--muted-foreground) / 0.72);
+  }
+
+  .devnote-editor__preview-content {
+    padding: 0;
+    background: transparent;
+    color: hsl(var(--foreground));
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  .devnote-editor__preview-content.wmde-markdown,
+  .devnote-editor__preview-content.wmde-markdown-var {
+    background: transparent;
+    color: hsl(var(--foreground));
+  }
+
+  .devnote-editor__preview-content pre,
+  .devnote-editor__preview-content code {
+    background: hsl(var(--card));
+  }
+
+  /* ────────────────────────────────────────────
+     Markdown rendered — restaura estilos que o
+     Tailwind preflight reseta (list-style, etc.)
+     Aplica no preview do editor e no modo leitura.
+     ──────────────────────────────────────────── */
+  .wmde-markdown ul,
+  .devnote-reading-content ul {
+    list-style-type: disc !important;
+    padding-left: 1.5rem !important;
+    margin: 0.5rem 0 !important;
+  }
+
+  .wmde-markdown ol,
+  .devnote-reading-content ol {
+    list-style-type: decimal !important;
+    padding-left: 1.5rem !important;
+    margin: 0.5rem 0 !important;
+  }
+
+  .wmde-markdown li,
+  .devnote-reading-content li {
+    margin: 0.25rem 0 !important;
+    line-height: 1.7;
+  }
+
+  /* Checklist — apenas os itens com checkbox (task-list-item) removem marcadores */
+  .wmde-markdown li.task-list-item,
+  .devnote-reading-content li.task-list-item {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 0.6rem !important;
+    list-style: none !important;
+    list-style-type: none !important;
+  }
+
+  /* Se a lista contiver itens normais, eles mantêm bullets mesmo se houver task items na mesma lista */
+  .wmde-markdown ul > li:not(.task-list-item),
+  .devnote-reading-content ul > li:not(.task-list-item) {
+    list-style-type: disc !important;
+  }
+
+  /* Listas aninhadas (indentadas com Tab) */
+  .wmde-markdown ul ul,
+  .wmde-markdown ol ul,
+  .devnote-reading-content ul ul,
+  .devnote-reading-content ol ul {
+    list-style-type: circle !important;
+    padding-left: 1.5rem !important;
+    margin: 0.25rem 0 !important;
+  }
+
+  .wmde-markdown ol ol,
+  .wmde-markdown ul ol,
+  .devnote-reading-content ol ol,
+  .devnote-reading-content ul ol {
+    list-style-type: lower-latin !important;
+    padding-left: 1.5rem !important;
+    margin: 0.25rem 0 !important;
+  }
+
+  .wmde-markdown li.task-list-item input[type="checkbox"],
+  .devnote-reading-content li.task-list-item input[type="checkbox"] {
+    margin-top: 0.35rem !important;
+    accent-color: hsl(var(--primary)) !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    width: 1rem !important;
+    height: 1rem !important;
+    flex-shrink: 0 !important;
+    opacity: 1 !important;
+  }
+
+  .wmde-markdown li.task-list-item input[type="checkbox"]:checked + *,
+  .devnote-reading-content li.task-list-item input[type="checkbox"]:checked + * {
+    opacity: 0.6;
+    text-decoration: line-through;
+  }
+
+  /* ────────────────────────────────────────────
+     Modo leitura — container de markdown renderizado
+     ──────────────────────────────────────────── */
+  .devnote-reading-content {
+    font-size: 15px;
+    line-height: 1.8;
+    color: hsl(var(--foreground) / 0.9);
+  }
+
+  .devnote-reading-content h1 {
+    font-size: 1.75em;
+    font-weight: 700;
+    margin: 1em 0 0.5em;
+    line-height: 1.3;
+    color: hsl(var(--foreground));
+  }
+
+  .devnote-reading-content h2 {
+    font-size: 1.4em;
+    font-weight: 600;
+    margin: 0.9em 0 0.4em;
+    line-height: 1.3;
+    color: hsl(var(--foreground));
+  }
+
+  .devnote-reading-content h3 {
+    font-size: 1.15em;
+    font-weight: 600;
+    margin: 0.8em 0 0.3em;
+    color: hsl(var(--foreground));
+  }
+
+  .devnote-reading-content p {
+    margin: 0.5em 0;
+  }
+
+  .devnote-reading-content blockquote {
+    border-left: 3px solid hsl(var(--primary) / 0.5);
+    padding-left: 1em;
+    margin: 0.75em 0;
+    color: hsl(var(--muted-foreground));
+    font-style: italic;
+  }
+
+  .devnote-reading-content pre {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.5);
+    border-radius: 8px;
+    padding: 1em;
+    margin: 0.75em 0;
+    overflow-x: auto;
+  }
+
+  .devnote-reading-content code {
+    background: hsl(var(--card));
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: var(--font-mono, ui-monospace, monospace);
+  }
+
+  .devnote-reading-content pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .devnote-reading-content strong {
+    font-weight: 700;
+    color: hsl(var(--foreground));
+  }
+
+  .devnote-reading-content hr {
+    border: none;
+    border-top: 1px solid hsl(var(--border) / 0.4);
+    margin: 1.5em 0;
+  }
+
+  /* ────────────────────────────────────────────
+     Slash menu (dropdown flutuante)
+     ──────────────────────────────────────────── */
+  .devnote-slash-menu {
+    z-index: 100;
+    min-width: 220px;
+    max-width: 280px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid hsl(var(--border) / 0.6);
+    background: hsl(var(--card) / 0.95);
+    backdrop-filter: blur(16px);
+    box-shadow:
+      0 8px 32px hsl(0 0% 0% / 0.4),
+      0 2px 8px hsl(0 0% 0% / 0.2);
+    animation: devnote-slash-fade-in 0.12s ease-out;
+  }
+
+  @keyframes devnote-slash-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .devnote-slash-menu__header {
+    padding: 4px 8px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    color: hsl(var(--muted-foreground) / 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .devnote-slash-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s ease;
+  }
+
+  .devnote-slash-menu__item:hover,
+  .devnote-slash-menu__item--active {
+    background: hsl(var(--primary) / 0.12);
+  }
+
+  .devnote-slash-menu__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid hsl(var(--border) / 0.5);
+    background: hsl(var(--card));
+    color: hsl(var(--muted-foreground));
+    flex-shrink: 0;
+  }
+
+  .devnote-slash-menu__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .devnote-slash-menu__label {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  .devnote-slash-menu__desc {
+    font-size: 11px;
+    color: hsl(var(--muted-foreground) / 0.7);
+    line-height: 1.2;
+  }
+}

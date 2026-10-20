@@ -1,115 +1,422 @@
-import * as React from "react";
-import { useState, useEffect } from "react";
-import {
-  Pin,
-  Edit3,
-  Calendar,
-  Trash2,
-  Save,
-  X,
-  FileText,
-  Copy,
-  Check,
-} from "lucide-react";
-import type { NoteItem } from "../types";
+import MarkdownPreview from "@uiw/react-markdown-preview";
+import { Calendar, Check, Copy, Edit3, FileText, Pin, Save, Trash2, X } from "lucide-react";
+import type { FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
+import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
+import { cn } from "../../../lib/utils";
+import { clearExistingDraft, clearNewDraft, loadExistingDraft, saveExistingDraft } from "../draft-storage";
+import {
+  formatMarkdownForPreview,
+  formatNoteWorkspaceTimestamp,
+  toggleMarkdownCheckbox,
+} from "../notes.utils";
+import type { NoteItem } from "../types";
+import { MarkdownEditor } from "./MarkdownEditor";
 
 interface NoteWorkspaceProps {
   note: NoteItem | null;
-  onUpdateNote?: (updated: NoteItem) => void;
-  onDeleteNote?: (id: string) => void;
-  onTogglePin?: (id: string) => void;
+  draftNote?: NoteItem | null;
+  isDraftRecovered?: boolean;
+  userEmail: string;
+  isLoading?: boolean;
+  isSaving?: boolean;
+  isDeleting?: boolean;
+  errorMessage?: string | null;
+  mutationErrorMessage?: string | null;
+  onRetry?: () => void;
+  onCreateNote?: (
+    draft: Pick<NoteItem, "title" | "content" | "tags" | "isPinned" | "kind">,
+  ) => Promise<void> | void;
+  onDraftChange?: (draft: NoteItem) => void;
+  onDiscardDraft?: () => void;
+  onUpdateNote?: (updated: NoteItem) => Promise<void> | void;
+  onDeleteNote?: (id: string) => Promise<void> | void;
+  onTogglePin?: (note: NoteItem) => Promise<void> | void;
+}
+
+function parseTags(tagsInput: string) {
+  return [
+    ...new Set(
+      tagsInput
+        .split(",")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 export function NoteWorkspace({
   note,
+  draftNote = null,
+  isDraftRecovered = false,
+  userEmail,
+  isLoading = false,
+  isSaving = false,
+  isDeleting = false,
+  errorMessage = null,
+  mutationErrorMessage = null,
+  onRetry,
+  onCreateNote,
+  onDraftChange,
+  onDiscardDraft,
   onUpdateNote,
   onDeleteNote,
   onTogglePin,
 }: NoteWorkspaceProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  // Estado do formulário de edição
+  const [hasRecoveredDraft, setHasRecoveredDraft] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
+  const [isPreviewingMarkdown, setIsPreviewingMarkdown] = useState(true);
   const [editTitle, setEditTitle] = useState("");
   const [editTags, setEditTags] = useState("");
   const [editContent, setEditContent] = useState("");
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const lastHydratedKeyRef = useRef<string | null>(null);
+  const lastFocusedKeyRef = useRef<string | null>(null);
 
-  // Sincroniza formulário com a nota selecionada
+  const activeNote = draftNote ?? note;
+  const isDraftMode = Boolean(draftNote);
+
+  const normalizedTags = useMemo(() => parseTags(editTags), [editTags]);
+
   useEffect(() => {
-    if (note) {
-      setEditTitle(note.title);
-      setEditTags(note.tags.join(", "));
-      setEditContent(note.content || "");
+    if (!activeNote) {
+      lastHydratedKeyRef.current = null;
       setIsEditing(false);
+      setHasRecoveredDraft(false);
+      setTitleError(null);
+      return;
     }
-  }, [note]);
 
-  if (!note) {
+    const hydrationKey = draftNote
+      ? `draft:${draftNote.id}`
+      : `note:${activeNote.id}:${activeNote.updatedAt}`;
+
+    if (lastHydratedKeyRef.current === hydrationKey) {
+      return;
+    }
+
+    lastHydratedKeyRef.current = hydrationKey;
+
+    if (draftNote) {
+      setEditTitle(draftNote.title);
+      setEditTags(draftNote.tags.join(", "));
+      setEditContent(draftNote.content);
+      setHasRecoveredDraft(isDraftRecovered);
+      setIsEditing(true);
+      setTitleError(null);
+      return;
+    }
+
+    const storedDraft = loadExistingDraft(userEmail, activeNote.id);
+
+    if (storedDraft) {
+      setEditTitle(storedDraft.title);
+      setEditTags(storedDraft.tags.join(", "));
+      setEditContent(storedDraft.content);
+      setHasRecoveredDraft(true);
+      setIsEditing(true);
+      setTitleError(null);
+      return;
+    }
+
+    setEditTitle(activeNote.title);
+    setEditTags(activeNote.tags.join(", "));
+    setEditContent(activeNote.content);
+    setHasRecoveredDraft(false);
+    setIsEditing(false);
+    setTitleError(null);
+  }, [activeNote, draftNote, isDraftRecovered, userEmail]);
+
+  useEffect(() => {
+    if (!activeNote || !isEditing || (isDraftMode && isSaving)) {
+      return;
+    }
+
+    if (isDraftMode) {
+      onDraftChange?.({
+        ...activeNote,
+        title: editTitle,
+        content: editContent,
+        tags: normalizedTags,
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const hasChanges =
+      editTitle !== activeNote.title ||
+      editContent !== activeNote.content ||
+      normalizedTags.join(",") !== activeNote.tags.join(",");
+
+    if (!hasChanges) {
+      clearExistingDraft(userEmail, activeNote.id);
+      return;
+    }
+
+    saveExistingDraft(userEmail, activeNote.id, {
+      title: editTitle,
+      content: editContent,
+      tags: normalizedTags,
+      isPinned: activeNote.isPinned,
+      kind: activeNote.kind,
+      createdAt: activeNote.createdAt,
+      updatedAt: new Date().toISOString(),
+      version: activeNote.version,
+    });
+  }, [
+    activeNote,
+    editContent,
+    editTitle,
+    isDraftMode,
+    isEditing,
+    isSaving,
+    normalizedTags,
+    onDraftChange,
+    userEmail,
+  ]);
+
+  useEffect(() => {
+    if (!activeNote || !isEditing) {
+      lastFocusedKeyRef.current = null;
+      return;
+    }
+
+    const focusKey = `${isDraftMode ? "draft" : "note"}:${activeNote.id}:editing`;
+
+    if (lastFocusedKeyRef.current === focusKey) {
+      return;
+    }
+
+    lastFocusedKeyRef.current = focusKey;
+  }, [activeNote, isDraftMode, isEditing]);
+
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return;
+    }
+
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape" && !isDeleting) {
+        setIsDeleteDialogOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isDeleteDialogOpen, isDeleting]);
+
+  if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-background text-muted-foreground p-8 text-center select-none">
-        <div className="w-12 h-12 rounded-xl bg-card border border-border/60 flex items-center justify-center mb-3 text-muted-foreground/60">
+      <div className="flex flex-1 flex-col bg-background">
+        <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-4 px-8 py-8">
+          <div className="h-6 w-32 animate-pulse rounded bg-white/10" />
+          <div className="h-10 w-2/3 animate-pulse rounded bg-white/10" />
+          <div className="h-32 w-full animate-pulse rounded bg-white/5" />
+          <div className="h-48 w-full animate-pulse rounded bg-white/5" />
+        </div>
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center bg-background p-8 text-center">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300">
+          <FileText className="h-6 w-6" />
+        </div>
+        <p className="text-sm font-medium text-foreground">Nao foi possivel carregar suas notas</p>
+        <p className="mt-1 max-w-sm text-xs text-muted-foreground">{errorMessage}</p>
+        {onRetry && (
+          <Button type="button" variant="primary" size="sm" onClick={onRetry} className="mt-4">
+            Tentar novamente
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  if (!activeNote) {
+    return (
+      <div className="flex flex-1 select-none flex-col items-center justify-center bg-background p-8 text-center text-muted-foreground">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-card text-muted-foreground/60">
           <FileText className="h-6 w-6" />
         </div>
         <p className="text-sm font-medium text-foreground">Nenhuma nota selecionada</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-          Selecione uma nota na lista ao lado ou crie uma nova para começar a anotar.
+        <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+          Clique em "Nova Nota" para abrir um rascunho local ou selecione uma nota existente.
         </p>
       </div>
     );
   }
 
   const handleCopyContent = () => {
-    if (note.content) {
-      navigator.clipboard.writeText(note.content);
+    if (activeNote.content) {
+      navigator.clipboard.writeText(activeNote.content);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!onUpdateNote) return;
+  const handleConfirmDelete = async () => {
+    if (!activeNote || isDraftMode) {
+      return;
+    }
 
-    const parsedTags = editTags
-      .split(",")
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean);
+    await onDeleteNote?.(activeNote.id);
+    setIsDeleteDialogOpen(false);
+  };
 
-    const updated: NoteItem = {
-      ...note,
-      title: editTitle.trim() || "Sem título",
-      tags: parsedTags,
+  const resetToOriginalState = () => {
+    if (draftNote) {
+      setEditTitle(draftNote.title);
+      setEditTags(draftNote.tags.join(", "));
+      setEditContent(draftNote.content);
+      setIsPreviewingMarkdown(false);
+      setIsEditing(false);
+      setTitleError(null);
+      return;
+    }
+
+    if (!note) {
+      return;
+    }
+
+    clearExistingDraft(userEmail, note.id);
+    setEditTitle(note.title);
+    setEditTags(note.tags.join(", "));
+    setEditContent(note.content);
+    setHasRecoveredDraft(false);
+    setIsEditing(false);
+    setTitleError(null);
+  };
+
+  const executeDiscardDraft = () => {
+    setEditTitle("");
+    setEditContent("");
+    setEditTags("");
+    setIsEditing(false);
+    setHasRecoveredDraft(false);
+    setTitleError(null);
+    setIsDiscardDialogOpen(false);
+    lastHydratedKeyRef.current = null;
+    lastFocusedKeyRef.current = null;
+    clearNewDraft(userEmail);
+    if (note?.id) {
+      clearExistingDraft(userEmail, note.id);
+    }
+    onDiscardDraft?.();
+  };
+
+  const handleDiscardDraftClick = () => {
+    const hasContent = Boolean(
+      editTitle.trim() || editContent.trim() || editTags.trim(),
+    );
+
+    if (!hasContent) {
+      executeDiscardDraft();
+      return;
+    }
+
+    setIsDiscardDialogOpen(true);
+  };
+
+  const handleReadingCheckboxClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const checkbox =
+      target instanceof HTMLInputElement && target.type === "checkbox"
+        ? target
+        : target
+            .closest("li.task-list-item")
+            ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+
+    if (checkbox) {
+      event.preventDefault();
+      const container = event.currentTarget;
+      const allCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
+      const index = allCheckboxes.indexOf(checkbox);
+      if (index !== -1 && activeNote.content) {
+        const nextContent = toggleMarkdownCheckbox(activeNote.content, index);
+        if (note && onUpdateNote) {
+          void onUpdateNote({ ...note, content: nextContent });
+        } else if (isDraftMode && onDraftChange && draftNote) {
+          onDraftChange({ ...draftNote, content: nextContent });
+        }
+      }
+    }
+  };
+
+  const salvarNota = async () => {
+    const sanitizedTitle = editTitle.trim();
+
+    if (!sanitizedTitle) {
+      setTitleError("Informe um titulo antes de salvar a nota.");
+      titleInputRef.current?.focus();
+      return;
+    }
+
+    const payload = {
+      title: sanitizedTitle,
       content: editContent,
-      updatedAt: "Agora",
+      tags: normalizedTags,
+      isPinned: activeNote.isPinned,
+      kind: activeNote.kind,
     };
 
-    onUpdateNote(updated);
+    if (isDraftMode) {
+      await onCreateNote?.(payload);
+      setHasRecoveredDraft(false);
+      setIsEditing(false);
+      return;
+    }
+
+    if (!note || !onUpdateNote) {
+      return;
+    }
+
+    await onUpdateNote({
+      ...note,
+      ...payload,
+    });
+
+    clearExistingDraft(userEmail, note.id);
+    setHasRecoveredDraft(false);
     setIsEditing(false);
   };
 
+  const handleSave = async (event: FormEvent) => {
+    event.preventDefault();
+    await salvarNota();
+  };
+
   return (
-    <div className="flex-1 flex flex-col h-screen bg-background overflow-hidden">
-      {/* Barra superior de ações */}
-      <header className="border-b border-border/40 px-6 py-2.5 flex items-center justify-between bg-card/20 shrink-0">
-        <div className="flex items-center space-x-2">
-          <span className="text-xs font-mono text-muted-foreground/80 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-            {isEditing ? "Editando" : "Leitura"}
+    <div className="flex h-full flex-1 flex-col overflow-hidden bg-background">
+      <header className="flex shrink-0 items-center justify-between border-b border-border/40 bg-card/20 px-6 py-2.5">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground/80">
+            <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+            {isDraftMode ? "Rascunho local" : isEditing ? "Editando" : "Leitura"}
           </span>
+          {hasRecoveredDraft && (
+            <span className="text-[11px] font-mono text-primary/80">Conteudo recuperado</span>
+          )}
         </div>
 
-        {/* Controles de ação */}
         <div className="flex items-center space-x-2 text-xs font-mono">
           {!isEditing ? (
             <>
-              {note.content && (
+              {activeNote.content && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleCopyContent}
-                  className="h-7 text-[11px] gap-1 px-2.5 font-mono"
+                  className="h-7 gap-1 px-2.5 text-[11px] font-mono"
                 >
                   {copied ? (
                     <>
@@ -130,46 +437,61 @@ export function NoteWorkspace({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="h-7 text-[11px] gap-1 px-2.5 font-mono"
+                className="h-7 gap-1 px-2.5 text-[11px] font-mono"
               >
                 <Edit3 className="h-3 w-3" />
-                <span>Editar</span>
+                <span>{isDraftMode ? "Continuar" : "Editar"}</span>
               </Button>
 
-              <button
-                type="button"
-                onClick={() => onTogglePin?.(note.id)}
-                className="p-1.5 rounded hover:bg-white/5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                title={note.isPinned ? "Desafixar nota" : "Fixar nota"}
-              >
-                <Pin
-                  className={`h-3.5 w-3.5 ${
-                    note.isPinned ? "text-primary fill-primary/20 rotate-45" : ""
-                  }`}
-                />
-              </button>
+              {!isDraftMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onTogglePin?.(activeNote)}
+                    disabled={isSaving}
+                    className="cursor-pointer rounded p-1.5 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    title={activeNote.isPinned ? "Desafixar nota" : "Fixar nota"}
+                  >
+                    <Pin
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        activeNote.isPinned && "rotate-45 fill-primary/20 text-primary",
+                      )}
+                    />
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm("Tem certeza que deseja excluir esta anotação?")) {
-                    onDeleteNote?.(note.id);
-                  }
-                }}
-                className="p-1.5 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 cursor-pointer transition-colors"
-                title="Excluir nota"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    disabled={isDeleting}
+                    className="cursor-pointer rounded p-1.5 text-rose-400/80 transition-colors hover:bg-rose-500/15 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Excluir nota"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
             </>
           ) : (
             <>
+              {isDraftMode && onDiscardDraft && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDiscardDraftClick}
+                  className="h-7 gap-1 border-rose-500/30 px-2.5 text-[11px] font-mono text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  <span>Descartar</span>
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setIsEditing(false)}
-                className="h-7 text-[11px] gap-1 px-2.5 font-mono"
+                onClick={resetToOriginalState}
+                className="h-7 gap-1 px-2.5 text-[11px] font-mono"
               >
                 <X className="h-3 w-3" />
                 <span>Cancelar</span>
@@ -178,122 +500,231 @@ export function NoteWorkspace({
                 type="button"
                 variant="primary"
                 size="sm"
-                onClick={handleSave}
-                className="h-7 text-[11px] gap-1 px-2.5 font-mono"
+                isLoading={isSaving}
+                onClick={() => {
+                  void salvarNota();
+                }}
+                className="h-7 gap-1 px-2.5 text-[11px] font-mono"
               >
                 <Save className="h-3 w-3" />
-                <span>Salvar</span>
+                <span>{isDraftMode ? "Salvar Nota" : "Salvar"}</span>
               </Button>
             </>
           )}
         </div>
       </header>
 
-      {/* Área de conteúdo */}
-      <div className="flex-1 overflow-y-auto px-8 py-6 max-w-3xl w-full mx-auto">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {mutationErrorMessage && (
+          <div className="mx-6 mt-6 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+            {mutationErrorMessage}
+          </div>
+        )}
+
         {!isEditing ? (
-          /* MODO VISUALIZAÇÃO */
-          <article className="space-y-6">
-            {/* Tags */}
-            {note.tags.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {note.tags.map((t) => (
-                  <span
-                    key={t}
-                    className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-border/60 text-muted-foreground"
-                  >
-                    #{t}
+          <div className="flex-1 overflow-y-auto">
+            <article className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-6 lg:px-8">
+              {activeNote.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {activeNote.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded border border-border/60 bg-white/[0.04] px-2 py-0.5 text-[11px] font-mono text-muted-foreground"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-3 border-b border-border/40 pb-5">
+                <h1 className="text-3xl font-semibold leading-tight tracking-[-0.03em] text-foreground lg:text-4xl">
+                  {activeNote.title || "Nova anotacao"}
+                </h1>
+                <div className="flex items-center space-x-3 text-xs font-mono text-muted-foreground/70">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {formatNoteWorkspaceTimestamp(activeNote.createdAt, activeNote.updatedAt)}
                   </span>
-                ))}
+                </div>
               </div>
-            )}
 
-            {/* Cabeçalho da Nota */}
-            <div className="space-y-2 border-b border-border/40 pb-4">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground leading-snug">
-                {note.title}
-              </h1>
-              <div className="flex items-center space-x-3 text-xs font-mono text-muted-foreground/70">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {note.updatedAt}
-                </span>
-              </div>
-            </div>
-
-            {/* Conteúdo Livre */}
-            {note.content ? (
-              <div className="text-sm text-foreground/90 leading-relaxed font-sans whitespace-pre-wrap selection:bg-primary/20">
-                {note.content}
-              </div>
-            ) : (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setIsEditing(true)}
-                onKeyDown={(e) => e.key === "Enter" && setIsEditing(true)}
-                className="p-8 border border-dashed border-border/60 rounded-lg text-center text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground cursor-pointer transition-colors"
-              >
-                Esta nota está vazia. Clique aqui para escrever suas anotações livres.
-              </div>
-            )}
-          </article>
+              {activeNote.content ? (
+                <div
+                  className="min-h-[55vh] rounded-2xl border border-border/50 bg-card/30 p-5 selection:bg-primary/20"
+                  data-color-mode="dark"
+                  onClick={handleReadingCheckboxClick}
+                >
+                  <MarkdownPreview
+                    source={formatMarkdownForPreview(activeNote.content)}
+                    className="devnote-reading-content"
+                    skipHtml
+                    rehypeRewrite={(node) => {
+                      if (
+                        node.type === "element" &&
+                        node.tagName === "input" &&
+                        node.properties?.type === "checkbox"
+                      ) {
+                        delete node.properties.disabled;
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="min-h-[55vh] w-full cursor-pointer rounded-2xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  Esta nota esta pronta para escrever. Clique aqui e continue do ponto em que voce
+                  parou.
+                </button>
+              )}
+            </article>
+          </div>
         ) : (
-          /* MODO EDIÇÃO */
-          <form onSubmit={handleSave} className="space-y-5 pb-8">
-            <div className="space-y-1.5">
-              <input
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                placeholder="Título da anotação..."
-                className="w-full px-3 py-2 text-xl font-bold bg-transparent border-b border-border/60 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary"
-                required
-              />
+          <form
+            onSubmit={(event) => void handleSave(event)}
+            className="flex h-full flex-col overflow-hidden"
+          >
+            <div className="border-b border-border/40 bg-card/20 px-6 py-6 lg:px-8">
+              <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+                <div className="space-y-2">
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    value={editTitle}
+                    onChange={(event) => {
+                      setEditTitle(event.target.value);
+
+                      if (titleError && event.target.value.trim()) {
+                        setTitleError(null);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                        event.preventDefault();
+                        void salvarNota();
+                      }
+                    }}
+                    placeholder="Nova anotacao"
+                    className={cn(
+                      "w-full rounded-2xl border bg-card/50 px-4 py-3 text-3xl font-semibold tracking-[-0.03em] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 lg:text-4xl",
+                      titleError
+                        ? "border-rose-500/70 focus:border-rose-500 focus:ring-rose-500/30"
+                        : "border-border/60 focus:border-primary focus:ring-primary/40",
+                    )}
+                  />
+                  {titleError && <p className="text-xs text-rose-300">{titleError}</p>}
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="note-tags"
+                      className="text-[11px] font-mono font-semibold text-muted-foreground"
+                    >
+                      Tags opcionais
+                    </label>
+                    <input
+                      id="note-tags"
+                      type="text"
+                      value={editTags}
+                      onChange={(event) => setEditTags(event.target.value)}
+                      placeholder="ex: docker, postgres, backend"
+                      className="w-full rounded-xl border border-border/60 bg-input px-3 py-2 text-xs font-mono text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end text-[11px] font-mono text-muted-foreground/70">
+                  <span>Ctrl + Enter salva</span>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-mono text-muted-foreground uppercase font-semibold">
-                Tags (separadas por vírgula)
-              </label>
-              <input
-                type="text"
-                value={editTags}
-                onChange={(e) => setEditTags(e.target.value)}
-                placeholder="ex: docker, comandos, backend"
-                className="w-full px-3 py-1.5 text-xs font-mono bg-input border border-border/60 rounded-md text-foreground focus:outline-none focus:border-primary"
-              />
+            <div className="flex-1 overflow-hidden px-6 py-6 lg:px-8">
+              <div className="mx-auto flex h-full w-full max-w-6xl flex-col">
+                <MarkdownEditor
+                  id="note-content"
+                  value={editContent}
+                  onChange={setEditContent}
+                  placeholder="Escreva em markdown. Digite / para ver atalhos de formatação."
+                  onSave={() => void salvarNota()}
+                  showPreview={isPreviewingMarkdown}
+                />
+              </div>
             </div>
 
-            <div className="space-y-1.5 pt-2">
-              <label className="text-[11px] font-mono text-muted-foreground uppercase font-semibold">
-                Conteúdo livre
-              </label>
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                placeholder="Escreva livremente aqui... ideias, comandos, anotações de estudo ou resoluções rápidas."
-                rows={18}
-                className="w-full p-4 text-sm font-sans leading-relaxed bg-input/40 border border-border/60 rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary resize-y"
-              />
-            </div>
-
-            <div className="flex items-center justify-end space-x-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Salvar Nota
-              </Button>
+            <div className="border-t border-border/40 bg-card/30 px-6 py-3 lg:px-8">
+              <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
+                <p className="text-[11px] font-mono text-muted-foreground/70">
+                  {isDraftMode
+                    ? "Rascunho local ativo ate voce salvar."
+                    : "Rascunho local protegido durante a edicao."}
+                </p>
+                <div className="flex items-center justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant={isPreviewingMarkdown ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setIsPreviewingMarkdown((current) => !current)}
+                    className={cn(
+                      "text-xs font-mono transition-colors",
+                      isPreviewingMarkdown && "border border-white/15 bg-white/10 font-semibold text-foreground",
+                    )}
+                  >
+                    {isPreviewingMarkdown ? "Ocultar preview" : "Preview markdown"}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={resetToOriginalState}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm" isLoading={isSaving}>
+                    {isDraftMode ? "Salvar Nota" : "Salvar"}
+                  </Button>
+                </div>
+              </div>
             </div>
           </form>
         )}
       </div>
+
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title="Excluir anotacao"
+        description={
+          <>
+            Deseja excluir essa nota{" "}
+            <span className="font-semibold text-foreground">
+              {activeNote.title || "Sem titulo"}
+            </span>
+            ?
+          </>
+        }
+        confirmLabel="Excluir nota"
+        cancelLabel="Cancelar"
+        isLoading={isDeleting}
+        onCancel={() => {
+          if (!isDeleting) {
+            setIsDeleteDialogOpen(false);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <ConfirmDialog
+        open={isDiscardDialogOpen}
+        title="Descartar rascunho"
+        description={
+          <>
+            Deseja descartar as alteracoes deste rascunho? Todo o conteudo preenchido sera perdido permanentemente.
+          </>
+        }
+        confirmLabel="Descartar rascunho"
+        cancelLabel="Continuar editando"
+        onCancel={() => setIsDiscardDialogOpen(false)}
+        onConfirm={executeDiscardDraft}
+      />
     </div>
   );
 }
