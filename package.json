@@ -15,7 +15,10 @@
     "lint:fix": "turbo run lint:fix",
     "format": "biome format --write .",
     "typecheck": "tsc --build",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema=./prisma/schema.prisma"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

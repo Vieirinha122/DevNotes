@@ -61,11 +61,9 @@ authRoutes.post("/login", authLimiter, async (req, res) => {
     const user = await autenticarUsuario(parsed.data.email, parsed.data.password);
 
     // Gera o Access Token JWT curto (15 minutos)
-    const accessToken = jwt.sign(
-      { userId: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN },
-    );
+    const accessToken = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN,
+    });
 
     // Gera o Refresh Token aleatório e persiste na sessão
     const refreshToken = gerarRefreshToken();
@@ -104,11 +102,9 @@ authRoutes.post("/refresh", async (req, res) => {
   }
 
   // Gera novo Access Token
-  const accessToken = jwt.sign(
-    { userId: session.user.id, email: session.user.email },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN },
-  );
+  const accessToken = jwt.sign({ userId: session.user.id, email: session.user.email }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+  });
 
   return res.status(200).json({ accessToken });
 });

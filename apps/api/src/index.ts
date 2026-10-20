@@ -4,12 +4,14 @@ import dotenv from "dotenv";
 // Carrega .env do diretório atual e da raiz do monorepo
 dotenv.config();
 dotenv.config({ path: path.resolve(process.cwd(), "../../.env") });
+
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { type Express } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { authRoutes } from "./modules/auth/auth.routes.js";
+import { notesRoutes } from "./modules/notes/notes.routes.js";
 
 export const app: Express = express();
 
@@ -38,7 +40,7 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // Rotas de status e health check
-app.get("/", (request, response) => {
+app.get("/", (_request, response) => {
   response.status(200).send("Rodando");
 });
 
@@ -58,6 +60,9 @@ app.get("/api/v1", (_req, res) => {
 
 // Módulo de autenticação
 app.use("/api/v1/auth", authRoutes);
+
+// Módulo de notas (protegido pelo middleware `autenticar`)
+app.use("/api/v1/notes", notesRoutes);
 
 // Inicia o servidor HTTP para desenvolvimento local (fora do ambiente serverless)
 if (process.env.VERCEL !== "1") {
