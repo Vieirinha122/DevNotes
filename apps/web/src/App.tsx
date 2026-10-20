@@ -1,11 +1,35 @@
-// App hello world — vai ser substituído pelo layout real na próxima iteração
+import { useState } from "react";
+import { AuthPage, type UserSession } from "./modules/auth/AuthPage";
+import { HomePage } from "./modules/home/HomePage";
+
 export default function App() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">DevNote</h1>
-        <p className="text-muted-foreground">Casca do monorepo rodando.</p>
-      </div>
-    </div>
-  );
+  // Inicializa o estado lendo a sessão salva no localStorage
+  const [user, setUser] = useState<UserSession | null>(() => {
+    try {
+      const saved = localStorage.getItem("devnote_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Callback de sucesso da autenticação (login ou registro)
+  const handleAuthSuccess = (authenticatedUser: UserSession) => {
+    setUser(authenticatedUser);
+  };
+
+  // Encerra a sessão e retorna para a tela de autenticação
+  const handleLogout = () => {
+    localStorage.removeItem("devnote_access_token");
+    localStorage.removeItem("devnote_user");
+    setUser(null);
+  };
+
+  // Redirecionamento condicional: se logado, exibe o Workspace (Home)
+  if (user) {
+    return <HomePage user={user} onLogout={handleLogout} />;
+  }
+
+  // Se não autenticado, exibe a tela de login/cadastro
+  return <AuthPage onSuccess={handleAuthSuccess} />;
 }

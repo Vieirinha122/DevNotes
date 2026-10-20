@@ -1,4 +1,9 @@
-import "dotenv/config";
+import path from "node:path";
+import dotenv from "dotenv";
+
+// Carrega .env do diretório atual e da raiz do monorepo
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), "../../.env") });
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { type Express } from "express";
