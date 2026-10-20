@@ -2,6 +2,10 @@ import type { LoginInput, RegisterInput } from "@devnote/contracts";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
+function normalizeAuthEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 export interface AuthResponse {
   id?: string;
   name?: string | null;
@@ -22,7 +26,7 @@ export async function loginUser(credentials: LoginInput): Promise<AuthResponse> 
       "Content-Type": "application/json",
     },
     credentials: "include",
-    body: JSON.stringify(credentials),
+    body: JSON.stringify({ ...credentials, email: normalizeAuthEmail(credentials.email) }),
   });
 
   const data = await response.json();
@@ -41,7 +45,7 @@ export async function registerUser(credentials: RegisterInput): Promise<AuthResp
       "Content-Type": "application/json",
     },
     credentials: "include",
-    body: JSON.stringify(credentials),
+    body: JSON.stringify({ ...credentials, email: normalizeAuthEmail(credentials.email) }),
   });
 
   const data = await response.json();

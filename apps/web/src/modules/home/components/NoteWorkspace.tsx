@@ -243,7 +243,7 @@ export function NoteWorkspace({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-1 flex-col bg-background">
+      <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
         <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-4 px-4 py-6 sm:px-8 sm:py-8">
           <div className="h-6 w-32 animate-pulse rounded bg-white/10" />
           <div className="h-10 w-2/3 animate-pulse rounded bg-white/10" />
@@ -256,7 +256,7 @@ export function NoteWorkspace({
 
   if (errorMessage) {
     return (
-      <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-background p-6 text-center sm:p-8">
+      <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-background p-6 text-center sm:p-8">
         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300">
           <FileText className="h-6 w-6" />
         </div>
@@ -273,7 +273,7 @@ export function NoteWorkspace({
 
   if (!activeNote) {
     return (
-      <div className="flex min-h-screen flex-1 select-none flex-col items-center justify-center bg-background p-6 text-center text-muted-foreground sm:p-8">
+      <div className="flex h-full min-h-0 flex-1 select-none flex-col items-center justify-center bg-background p-6 text-center text-muted-foreground sm:p-8">
         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-card text-muted-foreground/60">
           <FileText className="h-6 w-6" />
         </div>
@@ -436,7 +436,7 @@ export function NoteWorkspace({
   };
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col overflow-hidden bg-background">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
       <header
         className={cn(
           "flex shrink-0 items-center justify-between border-b border-border/40 bg-card/20",

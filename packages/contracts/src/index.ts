@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * Schemas Zod compartilhados entre frontend e backend.
- * Definem a validação de entrada/saída (DTOs) em um único lugar.
+ * Definem a validacao de entrada/saida (DTOs) em um unico lugar.
  */
 export const RegisterBodySchema = z.object({
   name: z
@@ -10,7 +10,7 @@ export const RegisterBodySchema = z.object({
     .trim()
     .min(2, "Nome precisa ter pelo menos 2 caracteres")
     .max(120, "Nome muito longo"),
-  email: z.string().email("Email inválido"),
+  email: z.string().trim().toLowerCase().email("Email invalido"),
   password: z
     .string()
     .min(8, "Senha precisa de pelo menos 8 caracteres")
@@ -18,8 +18,8 @@ export const RegisterBodySchema = z.object({
 });
 
 export const LoginBodySchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(1, "Senha obrigatória"),
+  email: z.string().trim().toLowerCase().email("Email invalido"),
+  password: z.string().min(1, "Senha obrigatoria"),
 });
 
 export type RegisterInput = z.infer<typeof RegisterBodySchema>;

@@ -20,7 +20,7 @@ type AuthMode = "login" | "register";
 const RegisterFormSchema = z
   .object({
     name: z.string().trim().min(2, "Informe pelo menos 2 caracteres").max(120, "Nome muito longo"),
-    email: z.string().email("Email invalido"),
+    email: z.string().trim().toLowerCase().email("Email invalido"),
     password: z
       .string()
       .min(8, "Senha precisa de pelo menos 8 caracteres")
@@ -76,9 +76,10 @@ export function AuthPage({ onSuccess }: AuthPageProps = {}) {
     setSuccessMessage(null);
 
     try {
-      const response = await loginUser(values);
+      const normalizedEmail = values.email.trim().toLowerCase();
+      const response = await loginUser({ ...values, email: normalizedEmail });
       const user = response.user ?? {
-        email: values.email,
+        email: normalizedEmail,
         id: response.id,
         name: response.name ?? null,
       };
@@ -106,9 +107,10 @@ export function AuthPage({ onSuccess }: AuthPageProps = {}) {
     setSuccessMessage(null);
 
     try {
+      const normalizedEmail = values.email.trim().toLowerCase();
       const response = await registerUser({
         name: values.name,
-        email: values.email,
+        email: normalizedEmail,
         password: values.password,
       });
 
@@ -116,14 +118,14 @@ export function AuthPage({ onSuccess }: AuthPageProps = {}) {
 
       try {
         const loginRes = await loginUser({
-          email: values.email,
+          email: normalizedEmail,
           password: values.password,
         });
 
         const user = loginRes.user ?? {
           id: response.id,
           name: values.name,
-          email: values.email,
+          email: normalizedEmail,
         };
 
         if (loginRes.accessToken) {
@@ -138,7 +140,7 @@ export function AuthPage({ onSuccess }: AuthPageProps = {}) {
         const user = {
           id: response.id,
           name: values.name,
-          email: values.email,
+          email: normalizedEmail,
         };
 
         localStorage.setItem("devnote_user", JSON.stringify(user));
@@ -155,7 +157,7 @@ export function AuthPage({ onSuccess }: AuthPageProps = {}) {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col justify-between overflow-hidden bg-background antialiased">
+    <div className="relative flex min-h-dvh w-full flex-col justify-between overflow-hidden bg-background antialiased">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#1e2330_1px,transparent_1px)] [background-size:20px_20px] opacity-40" />
       <div className="pointer-events-none absolute left-1/2 top-1/3 h-[300px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
 
@@ -240,6 +242,9 @@ export function AuthPage({ onSuccess }: AuthPageProps = {}) {
                     type="email"
                     placeholder="dev@exemplo.com"
                     autoComplete="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     leftIcon={<Mail className="h-4 w-4" />}
                     error={loginForm.formState.errors.email?.message}
                     {...loginForm.register("email")}
@@ -329,6 +334,9 @@ export function AuthPage({ onSuccess }: AuthPageProps = {}) {
                     type="email"
                     placeholder="dev@exemplo.com"
                     autoComplete="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     leftIcon={<Mail className="h-4 w-4" />}
                     error={registerForm.formState.errors.email?.message}
                     {...registerForm.register("email")}

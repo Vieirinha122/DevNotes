@@ -58,7 +58,7 @@ export function NoteList({
   return (
     <aside
       className={cn(
-        "flex min-h-screen shrink-0 flex-col select-none",
+        "flex h-full min-h-0 shrink-0 flex-col select-none",
         isCompact
           ? "safe-top safe-bottom w-full bg-background"
           : "w-80 border-r border-border/40 bg-card/25 md:w-84",

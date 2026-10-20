@@ -4,6 +4,10 @@ import prisma from "../../prisma/client.js";
 
 const BCRYPT_COST = 12;
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 /**
  * Logica de negocio do auth.
  */
@@ -25,7 +29,8 @@ export function gerarRefreshToken(): string {
 }
 
 export async function registrarUsuario(nome: string, email: string, senha: string) {
-  const exists = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = normalizeEmail(email);
+  const exists = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (exists) throw new Error("Email ja cadastrado");
 
   const senhaHash = await hashSenha(senha);
@@ -33,7 +38,7 @@ export async function registrarUsuario(nome: string, email: string, senha: strin
   return prisma.user.create({
     data: {
       name: nome,
-      email,
+      email: normalizedEmail,
       passwordHash: senhaHash,
     },
     select: {
@@ -47,8 +52,9 @@ export async function registrarUsuario(nome: string, email: string, senha: strin
 }
 
 export async function autenticarUsuario(email: string, senha: string) {
+  const normalizedEmail = normalizeEmail(email);
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
     select: { id: true, name: true, email: true, passwordHash: true },
   });
 

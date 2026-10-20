@@ -245,7 +245,7 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     createNoteMutation.error ?? updateNoteMutation.error ?? deleteNoteMutation.error;
 
   return (
-    <div className="flex min-h-screen w-full select-none overflow-hidden bg-background antialiased">
+    <div className="flex h-dvh min-h-dvh w-full select-none overflow-hidden bg-background antialiased">
       {(!isCompactLayout || !shouldShowWorkspaceOnCompact) && (
         <NoteList
           userEmail={user.email}
