@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate --schema=../../prisma/schema.prisma && tsc --build",
+    "postinstall": "prisma generate --schema=../../prisma/schema.prisma",
     "start": "tsx src/index.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
