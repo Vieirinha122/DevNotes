@@ -20,9 +20,25 @@ const queryClient = new QueryClient({
 const container = document.getElementById("root");
 if (!container) throw new Error("#root nao encontrado no DOM");
 
-registerSW({
-  immediate: true,
-});
+if (import.meta.env.PROD) {
+  registerSW({
+    immediate: true,
+  });
+} else if ("serviceWorker" in navigator) {
+  void navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => {
+      void registration.unregister();
+    });
+  });
+
+  if ("caches" in window) {
+    void caches.keys().then((cacheKeys) => {
+      cacheKeys.forEach((cacheKey) => {
+        void caches.delete(cacheKey);
+      });
+    });
+  }
+}
 
 ReactDOM.createRoot(container).render(
   <React.StrictMode>
