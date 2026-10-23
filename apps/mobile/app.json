@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "DevNote",
+    "slug": "devnote-mobile",
+    "description": "Notas técnicas e rascunhos de desenvolvimento. Mobile companion.",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#080c13"
+    },
+    "editableOnce": false,
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "fetch"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foreground": "./assets/adaptive-icon.png",
+        "backgroundColor": "#080c13"
+      },
+      "package": "com.devnote.mobile",
+      "intentFilters": [
+        {
+          "action": "android.intent.action.VIEW",
+          "data": [
+            {
+              "scheme": "devnote",
+              "host": "create"
+            }
+          ],
+          "category": [
+            "android.intent.category.DEFAULT",
+            "android.intent.category.BROWSABLE"
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "TypedRouter": true
+    },
+    "extra": {
+      "apiUrl": "http://localhost:4000/api/v1"
+    }
+  }
+}

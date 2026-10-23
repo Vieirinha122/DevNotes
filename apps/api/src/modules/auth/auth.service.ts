@@ -67,7 +67,12 @@ export async function autenticarUsuario(email: string, senha: string) {
   return usuario;
 }
 
-export async function salvarSessao(userId: string, refreshToken: string, deviceId: string) {
+export async function salvarSessao(
+  userId: string,
+  refreshToken: string,
+  deviceId: string,
+  platform: string = "web",
+) {
   const expiresAt = new Date(Date.now() + (Number(process.env.JWT_REFRESH_TTL) || 604800) * 1000);
 
   return prisma.session.create({
@@ -75,6 +80,7 @@ export async function salvarSessao(userId: string, refreshToken: string, deviceI
       userId,
       hash: hashToken(refreshToken),
       deviceId,
+      platform,
       expiresAt,
     },
   });

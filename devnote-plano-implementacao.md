@@ -1,28 +1,28 @@
-# DevNote — Plano de implementação
+# DevNote - Plano de implementacao
 
-App de notas pessoal para desenvolvedores, focado em simplicidade, agilidade de captura e registro rápido do dia a dia.
+App de notas pessoal para desenvolvedores, focado em simplicidade, agilidade de captura e registro rapido do dia a dia.
 
 ---
 
-## 1. Visão e princípios
+## 1. Visao e principios
 
-**Problema real:** uso IA e resolvo problemas no dia a dia, mas anotações ficam espalhadas ou se perdem em ferramentas pesadas e cheias de burocracia.
+**Problema real:** uso IA e resolvo problemas no dia a dia, mas anotacoes ficam espalhadas ou se perdem em ferramentas pesadas e cheias de burocracia.
 
 **Objetivo do app:**
-1. Capturar notas rápido, com interface limpa e sem fricção.
-2. Salvar pensamentos, comandos, configurações e aprendizados em texto livre.
-3. Ter busca instantânea e organização por tags e notas fixadas.
-4. Começar pelo essencial e só adicionar complexidade quando o núcleo estiver estável e provado.
+1. Capturar notas rapido, com interface limpa e sem friccao.
+2. Salvar pensamentos, comandos, configuracoes e aprendizados em texto livre.
+3. Ter busca instantanea e organizacao por tags e notas fixadas.
+4. Comecar pelo essencial e so adicionar complexidade quando o nucleo estiver estavel e provado.
 
-**Princípios:**
-- **Simplicidade radical:** sem formulários rígidos ou excesso de campos obrigatórios;
+**Principios:**
+- **Simplicidade radical:** sem formularios rigidos ou excesso de campos obrigatorios;
 - **Texto livre primeiro:** anote como pensar (texto livre / markdown simples);
-- **Salvar local primeiro, sincronizar depois:** nunca perder uma nota por oscilação de rede;
-- **Cada fase entrega algo 100% usável.**
+- **Salvar local primeiro, sincronizar depois:** nunca perder uma nota por oscilacao de rede;
+- **Cada fase entrega algo 100% usavel.**
 
 ---
 
-## 2. Stack Tecnológica
+## 2. Stack Tecnologica
 
 | Camada | Tecnologia |
 |---|---|
@@ -34,27 +34,27 @@ App de notas pessoal para desenvolvedores, focado em simplicidade, agilidade de 
 | Backend | Node.js + Express + TypeScript |
 | ORM | Prisma |
 | Banco central | PostgreSQL (Neon) |
-| Validação | Zod, compartilhado entre front e back (`packages/contracts`) |
+| Validacao | Zod, compartilhado entre front e back (`packages/contracts`) |
 | Deploy | Vercel (Frontend Vite + Backend Express Serverless Function) |
 
 ---
 
 ## 3. Arquitetura
 
-```
+```text
   Frontend (Vite / React)
-         │
-         ▼  (HTTP REST /api/v1)
+         |
+         v  (HTTP REST /api/v1)
     API Express (Node.js)
-         │
-         ▼  (Prisma ORM)
+         |
+         v  (Prisma ORM)
   Neon PostgreSQL (Fonte da Verdade)
 ```
 
 Regras fixas:
 - O frontend nunca acessa o banco de dados diretamente;
-- O backend sempre filtra as notas pelo usuário autenticado (`userId`);
-- Regra de negócio e validações de dados residem no backend / contracts.
+- O backend sempre filtra as notas pelo usuario autenticado (`userId`);
+- Regra de negocio e validacoes de dados residem no backend / contracts.
 
 ---
 
@@ -62,13 +62,13 @@ Regras fixas:
 
 **User:**
 - `id` (UUID)
-- `email` (único)
+- `email` (unico)
 - `passwordHash` (bcrypt)
 - `createdAt`, `updatedAt`
 
 **Note:**
 - `id` (UUID ou nanoid)
-- `userId` (referência ao usuário dono)
+- `userId` (referencia ao usuario dono)
 - `title` (string)
 - `content` (string de texto livre / markdown)
 - `tags` (array de strings)
@@ -79,40 +79,49 @@ Regras fixas:
 
 ## 5. Endpoints da API (`/api/v1`)
 
-| Método | Endpoint | Função |
+| Metodo | Endpoint | Funcao |
 |---|---|---|
-| POST | `/api/v1/auth/register` | Cadastro de usuário com confirmação de senha |
-| POST | `/api/v1/auth/login` | Login com emissão de token JWT e cookie HttpOnly |
-| POST | `/api/v1/auth/refresh` | Renovação silenciosa do token de acesso |
-| POST | `/api/v1/auth/logout` | Revogação de sessão |
-| GET | `/api/v1/notes` | Listar e pesquisar notas do usuário |
-| POST | `/api/v1/notes` | Criar nova anotação |
-| GET | `/api/v1/notes/:id` | Consultar anotação específica |
-| PUT/PATCH | `/api/v1/notes/:id` | Atualizar título, conteúdo, tags ou fixação |
-| DELETE | `/api/v1/notes/:id` | Excluir anotação |
+| POST | `/api/v1/auth/register` | Cadastro de usuario com confirmacao de senha |
+| POST | `/api/v1/auth/login` | Login com emissao de token JWT e cookie HttpOnly |
+| POST | `/api/v1/auth/refresh` | Renovacao silenciosa do token de acesso |
+| POST | `/api/v1/auth/logout` | Revogacao de sessao |
+| GET | `/api/v1/notes` | Listar e pesquisar notas do usuario |
+| POST | `/api/v1/notes` | Criar nova anotacao |
+| GET | `/api/v1/notes/:id` | Consultar anotacao especifica |
+| PUT/PATCH | `/api/v1/notes/:id` | Atualizar titulo, conteudo, tags ou fixacao |
+| DELETE | `/api/v1/notes/:id` | Excluir anotacao |
 
 ---
 
-## 6. Fases de Evolução
+## 6. Fases de Evolucao
 
-### Fase 1 — MVP: App de Notas Pessoal Ágil (Fase Atual)
+### Fase 1 - MVP: App de Notas Pessoal Agil (Fase Atual)
 - [x] Monorepo pnpm, TypeScript, configs limpas.
 - [x] Backend migrado para Node + Express + Prisma + Neon.
-- [x] Autenticação completa (registro, login, refresh, logout, senhas com bcrypt).
-- [x] Frontend com design system dark refinado e sem ruído de IA.
-- [x] Layout minimalista de 2 colunas (Lista à esquerda, Nota em foco à direita).
-- [x] Editor limpo de notas livres (Título, Tags, Conteúdo livre, Fixar, Excluir).
+- [x] Autenticacao completa (registro, login, refresh, logout, senhas com bcrypt).
+- [x] Frontend com design system dark refinado e sem ruido de IA.
+- [x] Layout minimalista de 2 colunas (Lista a esquerda, Nota em foco a direita).
+- [x] Editor limpo de notas livres (Titulo, Tags, Conteudo livre, Fixar, Excluir).
 - [ ] Endpoints de CRUD de notas no backend Express conectados ao Prisma.
-- [ ] Conexão do frontend via TanStack Query para sincronizar notas com a API.
+- [ ] Conexao do frontend via TanStack Query para sincronizar notas com a API.
 - [ ] Deploy completo na Vercel (Web + API).
 
-### Fase 2 — Offline e PWA
-- [ ] IndexedDB para cache offline automático de leitura e escrita.
-- [ ] Sincronização em segundo plano ao retomar conexão.
-- [ ] PWA instalável no desktop e celular.
+### Fase 2 - Offline e PWA
+- [ ] IndexedDB para cache offline automatico de leitura e escrita.
+- [ ] Sincronizacao em segundo plano ao retomar conexao.
+- [ ] PWA instalavel no desktop e celular.
 
-### Fase 3 — Especialização para Devs (Depois)
-- [ ] Syntax highlighting opcional para blocos de código dentro do Markdown.
-- [ ] Visualização de cheat sheets / comandos frequentes.
-- [ ] Exportação e importação em formato Markdown (`.md`).
-- [ ] Integrações externas futuras (IA assistente, Electron desktop se necessário).
+### Fase 3 - Especializacao para Devs (Depois)
+- [ ] Syntax highlighting opcional para blocos de codigo dentro do Markdown.
+- [ ] Visualizacao de cheat sheets / comandos frequentes.
+- [ ] Exportacao e importacao em formato Markdown (`.md`).
+- [ ] Integracoes externas futuras (IA assistente, Electron desktop se necessario).
+
+### Fase 4 - Android e IA nativa
+- [x] App Expo (TypeScript) em `apps/mobile` — scaffold + build validado.
+- [x] Auth mobile no backend (`POST /mobile-auth/login`, `/refresh`, `/logout`).
+- [x] Login mobile no app (TelaLogin + secure-store + api client).
+- [ ] CRUD de notas no mobile usando a API.
+- [ ] Integracao com intents do Android.
+- [ ] Base para AppFunctions da IA nativa.
+- [ ] Ver plano detalhado em `docs/ANDROID_IMPLEMENTATION_PLAN.md`.

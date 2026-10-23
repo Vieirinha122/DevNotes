@@ -98,6 +98,7 @@ model Session {
   userId     String    @map("user_id")
   hash       String
   deviceId   String?   @map("device_id")
+  platform   String    @default("web") @map("platform")
   expiresAt  DateTime  @map("expires_at")
   revokedAt  DateTime? @map("revoked_at")
   createdAt  DateTime  @default(now()) @map("created_at")

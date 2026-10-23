@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+build/
+web-build/
+
+# Expo
+.expo/
+.expo-shared/
+
+# Local env files
+.env
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+Thumbs.db:ex
+ehthumbs.db:im
+Desktop.ini:com

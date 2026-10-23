@@ -1,8 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -26,7 +25,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               "disabled:cursor-not-allowed disabled:opacity-50",
               leftIcon && "pl-10",
               rightIcon && "pr-10",
-              error && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
+              error &&
+                "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
               className,
             )}
             ref={ref}
@@ -38,11 +38,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
-        {error && (
-          <p className="text-xs text-destructive font-medium tracking-wide">
-            {error}
-          </p>
-        )}
+        {error && <p className="text-xs text-destructive font-medium tracking-wide">{error}</p>}
       </div>
     );
   },

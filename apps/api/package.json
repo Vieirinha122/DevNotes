@@ -10,7 +10,9 @@
     "start": "tsx src/index.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "test": "vitest"
+    "test": "vitest",
+    "typecheck": "tsc --build --noEmit",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run test"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

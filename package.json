@@ -22,7 +22,10 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
+    "@expo/cli": "0.24.24",
+    "@playwright/test": "^1.64.1",
     "@prisma/client": "^6.19.3",
+    "metro": "~0.82.5",
     "prisma": "6.19.3",
     "turbo": "^2.2.0",
     "typescript": "^5.6.0"

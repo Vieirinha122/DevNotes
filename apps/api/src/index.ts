@@ -11,6 +11,7 @@ import express, { type Express } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { authRoutes } from "./modules/auth/auth.routes.js";
+import { mobileAuthRoutes } from "./modules/mobile-auth/mobile-auth.routes.js";
 import { notesRoutes } from "./modules/notes/notes.routes.js";
 
 export const app: Express = express();
@@ -58,8 +59,11 @@ app.get("/api/v1", (_req, res) => {
   });
 });
 
-// Módulo de autenticação
+// Módulo de autenticação (web)
 app.use("/api/v1/auth", authRoutes);
+
+// Módulo de autenticação mobile (sem cookie — usa Bearer token)
+app.use("/api/v1/mobile-auth", mobileAuthRoutes);
 
 // Módulo de notas (protegido pelo middleware `autenticar`)
 app.use("/api/v1/notes", notesRoutes);
