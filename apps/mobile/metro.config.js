@@ -18,7 +18,13 @@ config.resolver.sourceExts = [
   "cjs",
 ];
 
+// Garante que o Metro priorize código nativo e só use fallback de browser
+// por último — evita carregar builds web/DOM-only em RN puro.
+config.resolver.resolverMainFields = ["react-native", "main", "browser"];
+
 // resolver.resolveRequest: fallback pra resolver expo-router/entry no pnpm
+// (pell-rich-editor importa react-native-webview, que já roda no Expo Go via
+// módulo nativo WebView incluído no app)
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   // Tenta resolver normalmente primeiro
   try {
@@ -29,7 +35,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       return context.resolveRequest(
         context,
         require.resolve("expo-router/entry", { paths: [__dirname] }),
-        platform
+        platform,
       );
     }
     throw error;

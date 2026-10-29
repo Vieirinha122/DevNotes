@@ -1,6 +1,6 @@
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
 import TelaLogin from "@/screens/auth/TelaLogin";
 import { recuperarAccessToken } from "@/store/auth-store";
 
@@ -23,7 +23,7 @@ export default function IndexScreen() {
       }
 
       if (token) {
-        router.replace("/home");
+        router.replace("/notes");
         return;
       }
 

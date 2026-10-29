@@ -55,15 +55,15 @@ Tambem ja existe o campo `isPinned`, entao fixar nota deve ser tratado como atua
 - [x] criar cliente HTTP (`api/client.ts` com retry automatico em 401);
 - [x] criar fluxo de login mobile (`TelaLogin.tsx` + `auth-store.ts`);
 - [x] armazenar sessao de forma segura no dispositivo (`expo-secure-store`);
-- [~] validar chamada autenticada para listar e manipular notas;  <!-- login OK; notas validar na Fase C -->
+- [x] validar chamada autenticada para listar e manipular notas;
 
 ### Entrega 2 - Acoes principais de nota
 
-- criar nota com `title`, `content`, `tags`, `isPinned`;
-- atualizar nota existente;
-- excluir nota com confirmacao;
-- fixar e desafixar nota;
-- tratar erros de rede, expiracao de sessao e conflitos simples.
+- [x] criar nota com `title`, `content`, `tags`, `isPinned`;
+- [x] atualizar nota existente;
+- [x] excluir nota com confirmacao (dialog e icone de lixeira no card e edicao);
+- [x] fixar e desafixar nota;
+- [x] tratar erros de rede, expiracao de sessao e conflitos simples.
 
 ### Entrega 3 - Integracao Android assistiva
 
@@ -174,12 +174,12 @@ apps/android/
 
 ### Fase C - CRUD de notas no Android
 
-- listar notas do usuario;
-- criar nota;
-- editar nota;
-- excluir nota;
-- fixar e desafixar nota;
-- exibir feedback de erro e sucesso.
+- [x] listar notas do usuario (busca dinamica + scroll infinito);
+- [x] criar nota (rich text com tags, checklist, bold, code block, dark theme);
+- [x] editar nota (com dirty check para descarte e menu de acoes de link);
+- [x] excluir nota (com confirmacao em modal e botao de lixeira no card e no header);
+- [x] fixar e desafixar nota (com persistencia imediata);
+- [x] exibir feedback de erro e sucesso.
 
 #### Criterio de aceite
 
@@ -251,30 +251,30 @@ O app precisa funcionar sozinho antes de depender da integracao com agente.
 
 ### Backend
 
-- criar modulo `mobile-auth`;
-- adicionar contratos compartilhados para auth mobile;
-- reutilizar service de sessao atual;
-- incluir identificacao de plataforma e device;
-- testar login, refresh e logout mobile.
+- [x] criar modulo `mobile-auth`;
+- [x] adicionar contratos compartilhados para auth mobile;
+- [x] reutilizar service de sessao atual;
+- [x] incluir identificacao de plataforma e device;
+- [x] testar login, refresh e logout mobile.
 
 ### Android
 
-- criar projeto Expo (TypeScript) em `apps/mobile`;
-- configurar HTTP client (TanStack Query);
-- criar secure storage (expo-secure-store);
-- criar repository de notas (Zod shared);
-- criar fluxos de create, update, delete e pin;
-- criar intents via Expo IntentLauncher + config plugins;
-- preparar modular nativo para AppFunctions (eject parcial na Fase E).
+- [x] criar projeto Expo (TypeScript) em `apps/mobile`;
+- [x] configurar HTTP client (TanStack Query);
+- [x] criar secure storage (expo-secure-store);
+- [x] criar repository de notas (Zod shared);
+- [x] criar fluxos de create, update, delete e pin;
+- [ ] criar intents via Expo IntentLauncher + config plugins;
+- [ ] preparar modular nativo para AppFunctions (eject parcial na Fase E).
 
 ### QA
 
-- teste de login invalido;
-- teste de token expirado;
-- teste de criacao de nota sem rede;
-- teste de exclusao com cancelamento;
-- teste de nota fixada e desafixada;
-- teste de mesma conta em web e Android.
+- [x] teste de login invalido;
+- [x] teste de token expirado;
+- [ ] teste de criacao de nota sem rede;
+- [x] teste de exclusao com cancelamento;
+- [x] teste de nota fixada e desafixada;
+- [x] teste de mesma conta em web e Android.
 
 ---
 
@@ -292,8 +292,7 @@ Esta frente estara pronta quando:
 
 ## 11. Proximo passo recomendado
 
-Comecar por:
-
 1. [x] scaffold de `apps/mobile` (Expo) — concluído;
 2. [x] endpoints de `mobile-auth` no backend — concluído;
-3. [ ] primeiro fluxo funcional: login + criar nota.  ← Fase C em andamento
+3. [x] primeiro fluxo funcional: login + CRUD de notas completo (Fase C concluída).
+4. [ ] Iniciar Fase D: Registro de NoteIntents e Deep Links do Android.

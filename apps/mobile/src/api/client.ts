@@ -3,8 +3,8 @@ import {
   recuperarAccessToken,
   recuperarRefreshToken,
   renovarAccessToken,
-} from "../store/auth-store.js";
-import { API_URL } from "./base-url.js";
+} from "../store/auth-store";
+import { API_URL } from "./base-url";
 
 /**
  * Cliente HTTP minimalista pra API DevNote.

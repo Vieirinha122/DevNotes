@@ -1,23 +1,45 @@
-import { useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_URL } from "@/api/base-url";
 import { withTimeout } from "@/lib/with-timeout";
 import { salvarTokens } from "@/store/auth-store";
+import { cores, espacamento, radius } from "@/styles/tokens";
 
 /**
  * Tela de login mobile.
- * Usa email + password + deviceId + platform (android fixo).
- * Após login bem-sucedido, salva tokens no secure store.
+ * - email + password + deviceId + platform (android)
+ * - Após login: salva tokens no SecureStore → redireciona pra /notes
+ *
+ * UI: edge-to-edge, sem header do Stack.
+ * - KeyboardAvoidingView: teclado não sobreponha os inputs
+ * - Labels visuais pra acessibilidade (não só placeholder)
+ * - Botão com spinner + activeOpacity feedback
+ * - Dismiss keyboard ao tocar fora
  */
 export default function TelaLogin() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   async function fazerLogin() {
+    Keyboard.dismiss();
     setCarregando(true);
     setErro(null);
 
@@ -29,7 +51,7 @@ export default function TelaLogin() {
           body: JSON.stringify({
             email,
             password: senha,
-            deviceId: "mobile-dev", // simplificado pra primeira iteracao
+            deviceId: "mobile-dev",
             platform: "android",
           }),
         }),
@@ -48,7 +70,7 @@ export default function TelaLogin() {
         5000,
         "Nao foi possivel salvar a sessao no dispositivo.",
       );
-      router.replace("/home");
+      router.replace("/notes"); // login bem-sucedido → lista de notas
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
       setErro(message);
@@ -58,90 +80,210 @@ export default function TelaLogin() {
   }
 
   return (
-    <View style={estilos.container}>
-      <Text style={estilos.titulo}>DevNote Mobile</Text>
-      <Text style={estilos.subtitulo}>Login pra continuar</Text>
-
-      {erro && <Text style={estilos.erro}>{erro}</Text>}
-
-      <TextInput
-        style={estilos.input}
-        placeholder="Email"
-        placeholderTextColor="#6b7280"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-
-      <TextInput
-        style={estilos.input}
-        placeholder="Senha"
-        placeholderTextColor="#6b7280"
-        value={senha}
-        onChangeText={setSenha}
-        secureTextEntry
-      />
-
-      <TouchableOpacity
-        style={[estilos.botao, carregando && estilos.botaoDesativado]}
-        onPress={fazerLogin}
-        disabled={carregando}
+    <KeyboardAvoidingView
+      style={[estilos.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        contentContainerStyle={estilos.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={estilos.botaoTexto}>{carregando ? "Entrando..." : "Entrar"}</Text>
-      </TouchableOpacity>
-    </View>
+        {/* Logo / branding */}
+        <View style={estilos.logoContainer}>
+          <Text style={estilos.logo}>• DevNote</Text>
+        </View>
+
+        {/* Título */}
+        <Text style={estilos.titulo}>Bem-vindo de volta</Text>
+        <Text style={estilos.subtitulo}>Login pra continuar</Text>
+
+        {/* Erro */}
+        {erro && <Text style={estilos.erro}>{erro}</Text>}
+
+        {/* Email com label */}
+        <View style={estilos.fieldGroup}>
+          <Text style={estilos.label}>Email</Text>
+          <TextInput
+            style={estilos.input}
+            placeholder="email@exemplo.com"
+            placeholderTextColor={cores.foregroundMutedForeground}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+            accessibilityLabel="Email"
+            accessibilityHint="Digite seu email"
+          />
+        </View>
+
+        {/* Senha com label + toggle de visibilidade */}
+        <View style={estilos.fieldGroup}>
+          <Text style={estilos.label}>Senha</Text>
+          <View style={estilos.inputComIcon}>
+            <TextInput
+              style={[estilos.input, estilos.inputFlex]}
+              placeholder="Sua senha"
+              placeholderTextColor={cores.foregroundMutedForeground}
+              value={senha}
+              onChangeText={setSenha}
+              secureTextEntry={!mostrarSenha}
+              autoComplete="password"
+              accessibilityLabel="Senha"
+              accessibilityHint="Digite sua senha"
+            />
+            <TouchableOpacity
+              onPress={() => setMostrarSenha(!mostrarSenha)}
+              style={estilos.botaoIcon}
+              accessibilityLabel={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+              hitSlop={12}
+            >
+              <Text style={estilos.iconOlho}>{mostrarSenha ? "👁️" : "👁️‍🗨️"}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Botão entrar */}
+        <TouchableOpacity
+          style={[estilos.botao, carregando && estilos.botaoDesativado]}
+          onPress={fazerLogin}
+          disabled={carregando}
+          activeOpacity={0.8}
+        >
+          {carregando ? (
+            <ActivityIndicator size="small" color={cores.primaryForeground} />
+          ) : (
+            <Text style={estilos.botaoTexto}>Entrar</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Footer: forgot password */}
+        <View style={estilos.footer}>
+          <TouchableOpacity
+            onPress={() => alert("Funcional em breve")}
+            activeOpacity={0.7}
+            hitSlop={12}
+          >
+            <Text style={estilos.linkRecuperacao}>Esqueci a senha</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const estilos = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#080c13",
+    backgroundColor: cores.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    paddingHorizontal: espacamento.lg,
+    paddingBottom: espacamento.xl,
   },
+  // Logo / branding
+  logoContainer: {
+    marginBottom: espacamento.xl2,
+  },
+  logo: {
+    color: cores.primary,
+    fontSize: 28,
+    fontWeight: "700",
+    letterSpacing: 2,
+  },
+  // Tipografia
   titulo: {
-    color: "#ffffff",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 8,
+    color: cores.foreground,
+    fontSize: 22,
+    fontWeight: "600",
+    marginBottom: espacamento.xs,
   },
   subtitulo: {
-    color: "#6b7280",
+    color: cores.foregroundMuted,
     fontSize: 14,
-    marginBottom: 32,
+    marginBottom: espacamento.xl2,
+  },
+  // Labels
+  fieldGroup: {
+    width: "100%",
+    marginBottom: espacamento.md,
+  },
+  label: {
+    color: cores.foreground,
+    fontSize: 13,
+    fontWeight: "500",
+    marginBottom: espacamento.xs,
   },
   input: {
     width: "100%",
-    backgroundColor: "#1a1f29",
-    color: "#ffffff",
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: cores.surfaceStrong,
+    color: cores.foreground,
+    padding: espacamento.md,
+    borderRadius: radius.md,
     fontSize: 16,
   },
+  // Input com icon (senha + toggle)
+  inputComIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: cores.surfaceStrong,
+    borderRadius: radius.md,
+    overflow: "hidden",
+  },
+  inputFlex: {
+    flex: 1,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+  },
+  botaoIcon: {
+    padding: espacamento.sm,
+    paddingLeft: 0,
+    paddingRight: espacamento.sm,
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 44,
+  },
+  iconOlho: {
+    fontSize: 18,
+  },
+  // Botão
   botao: {
     width: "100%",
-    backgroundColor: "#10b981",
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: cores.primary,
+    padding: espacamento.md,
+    borderRadius: radius.md,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: espacamento.sm,
+    minHeight: 48,
+    justifyContent: "center",
   },
   botaoDesativado: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   botaoTexto: {
-    color: "#ffffff",
+    color: cores.primaryForeground,
     fontSize: 16,
     fontWeight: "bold",
   },
-  erro: {
-    color: "#f87171",
+  // Footer
+  footer: {
+    marginTop: espacamento.lg,
+    alignItems: "center",
+  },
+  linkRecuperacao: {
+    color: cores.foregroundMuted,
     fontSize: 14,
-    marginBottom: 12,
+    textDecorationLine: "underline",
+  },
+  erro: {
+    color: cores.error,
+    fontSize: 14,
+    marginBottom: espacamento.sm,
     textAlign: "center",
+    paddingHorizontal: espacamento.md,
   },
 });

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { ApiError } from "../../lib/api";
 import type { UserSession } from "../auth/AuthPage";
 import { NoteList } from "./components/NoteList";
@@ -57,6 +58,7 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     };
   });
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [notaParaExcluir, setNotaParaExcluir] = useState<string | null>(null);
   const [newDraft, setNewDraft] = useState<NoteItem | null>(initialDraftState.draft);
   const [isDraftRecovered, setIsDraftRecovered] = useState(initialDraftState.recovered);
   const [filterType, setFilterType] = useState<CategoryFilter>("all");
@@ -227,8 +229,14 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     });
   };
 
-  const handleDeleteNote = async (id: string) => {
-    await deleteNoteMutation.mutateAsync(id);
+  const handleRequestDeleteNote = (id: string) => {
+    setNotaParaExcluir(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!notaParaExcluir) return;
+    await deleteNoteMutation.mutateAsync(notaParaExcluir);
+    setNotaParaExcluir(null);
   };
 
   const handleTogglePin = async (note: NoteItem) => {
@@ -264,7 +272,7 @@ export function HomePage({ user, onLogout }: HomePageProps) {
           onSearchChange={setSearchQuery}
           filterType={filterType}
           onFilterTypeChange={setFilterType}
-          onDeleteNote={handleDeleteNote}
+          onDeleteNote={handleRequestDeleteNote}
         />
       )}
 
@@ -289,11 +297,23 @@ export function HomePage({ user, onLogout }: HomePageProps) {
             onDiscardDraft={handleDiscardDraft}
             isDraftRecovered={isDraftRecovered}
             onUpdateNote={handleUpdateNote}
-            onDeleteNote={handleDeleteNote}
+            onDeleteNote={handleRequestDeleteNote}
             onTogglePin={handleTogglePin}
           />
         </main>
       )}
+
+      {/* Confirmação de exclusão de nota (ação destrutiva) */}
+      <ConfirmDialog
+        open={!!notaParaExcluir}
+        title="Excluir nota?"
+        description="Esta ação não pode ser desfeita. A nota será removida permanentemente."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        isLoading={deleteNoteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setNotaParaExcluir(null)}
+      />
     </div>
   );
 }
